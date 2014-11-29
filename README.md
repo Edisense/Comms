@@ -1,4 +1,4 @@
 Client
 ======
 
-Library to include for pulling data out of our replicated sensor system
+Library for communication with and within the Edisense cluster
