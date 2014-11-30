@@ -5,9 +5,6 @@
 #include <ctime>
 #include <list>
 
-//TODO Choose appropriate length
-#define HOST_NAME_MAX 40
-
 // 16-bit node id
 typedef uint16_t node_t;
 
