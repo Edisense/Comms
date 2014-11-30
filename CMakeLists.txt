@@ -10,7 +10,7 @@ find_package(ZeroMQ REQUIRED)
 find_package(Protobuf REQUIRED)
 
 set(ZMQPP_BUILD_STATIC false)
-set(ZEROMQ_LIBRARY_SHARED  ${ZeroMQ_LIBRARIES})
+set(ZEROMQ_LIB_DIR  ${ZeroMQ_LIBRARIES})
 set(ZEROMQ_LIBRARY_SOURCES ${ZeroMQ_INCLUDE_DIRS})
 
 add_subdirectory(ext/zmqpp)

@@ -11,7 +11,7 @@ namespace edisense_comms {
 
 class edisense_comms::Client {
 
-  ClientSubscriber *subscriber;
+  ClientSubscriber * subscriber;
 
 public:
 
@@ -20,12 +20,12 @@ public:
   /*!
    * Initializes the Client on the network
    */
-  void start(const ClientSubscriber * subscriber);
+  virtual void start(ClientSubscriber * subscriber);
 
   /*!
    * Stops operations on the client
    */
-  void stop();
+  virtual void stop();
 
   /*!
    * Request the current set of responsive nodes
@@ -42,7 +42,7 @@ public:
    */
   messageID requestData(device_t sensor, time_t start, time_t end);
 
-private:
+protected:
   /*!
    * Generates a unique identifier for a given message in the current session
    */

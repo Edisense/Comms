@@ -2,12 +2,11 @@
 
 using namespace edisense_comms;
 
-
 Client::Client() {
   // TODO Generate ClientID
 }
 
-void Client::start(const ClientSubscriber * subscriber) {
+void Client::start(ClientSubscriber * subscriber) {
   this->subscriber = subscriber;
   // TODO Setup ZMQ
 }

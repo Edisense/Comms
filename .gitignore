@@ -26,3 +26,9 @@
 *.exe
 *.out
 *.app
+
+# Jetbrains artifacts
+.idea/
+*.iml
+
+build/*
