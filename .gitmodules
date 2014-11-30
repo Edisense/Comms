@@ -1,0 +1,6 @@
+[submodule "zmqpp"]
+	path = zmqpp
+	url = https://github.com/zeromq/zmqpp.git
+[submodule "ext/zmqpp"]
+	path = ext/zmqpp
+	url = https://github.com/zeromq/zmqpp.git
