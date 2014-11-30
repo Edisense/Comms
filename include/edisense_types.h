@@ -20,9 +20,9 @@ typedef uint16_t partition_t;
 // 64-bit transaction id
 typedef uint64_t transaction_t;
 
-typedef struct Ownership {
+typedef struct {
   node_t node;
   std::list<int> range; // TODO I don't know how we want to represent ranges?
-};
+} Ownership;
 
 #endif /* EDISENSE_TYPES_H */
