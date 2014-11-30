@@ -11,7 +11,10 @@ find_package(Protobuf REQUIRED)
 
 set(ZMQPP_BUILD_STATIC false)
 set(ZEROMQ_LIB_DIR  ${ZeroMQ_LIBRARIES})
-set(ZEROMQ_LIBRARY_SOURCES ${ZeroMQ_INCLUDE_DIRS})
+set(ZEROMQ_INCLUDE_DIR ${ZeroMQ_INCLUDE_DIRS})
+
+# Hack to get ZeroMQPP to compile.  The library doesn't actually exist on the system
+set(ZEROMQ_LIBRARY_STATIC "")
 
 add_subdirectory(ext/zmqpp)
 
