@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <ctime>
 #include <list>
+#include <vector>
 
 // 16-bit node id
 typedef uint16_t node_t;
@@ -17,9 +18,7 @@ typedef uint16_t partition_t;
 // 64-bit transaction id
 typedef uint64_t transaction_t;
 
-typedef struct {
-  node_t node;
-  std::list<int> range; // TODO I don't know how we want to represent ranges?
-} Ownership;
+// Binary blob
+typedef std::vector<unsigned char> blob;
 
 #endif /* EDISENSE_TYPES_H */
