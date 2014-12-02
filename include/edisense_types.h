@@ -50,6 +50,14 @@ typedef struct PutResult
 	node_t moved_to;
 } PutResult;
 
+typedef struct GetResult
+{
+	bool success;
+	ErrorType error;
+	std::list<Data> *values; 
+	node_t moved_to;
+} GetResult;
+
 typedef struct CanReceiveResult 
 {
 	bool can_recv;
