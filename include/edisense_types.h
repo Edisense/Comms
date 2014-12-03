@@ -21,4 +21,60 @@ typedef uint64_t transaction_t;
 // Binary blob
 typedef typename std::vector<unsigned char> blob;
 
+const int kMaxDataLen = 20;
+
+typedef struct Data
+{
+	time_t timestamp;
+	time_t expiration;
+	char data[kMaxDataLen];
+	size_t datalen;
+} Data;
+
+// for message passing
+
+enum ErrorType
+{
+	DATA_MOVED = 0,
+	DATA_NOT_OWNED = 1,
+	DATA_MOVING = 2,
+	DB_ERROR = 3
+};
+
+typedef struct MessageId
+{
+	node_t node_id;
+	transaction_t tid;
+} MessageId;
+
+typedef struct PutResult
+{
+	bool success;
+	ErrorType error;
+	node_t moved_to;
+} PutResult;
+
+typedef struct GetResult
+{
+	bool success;
+	ErrorType error;
+	std::list<Data> *values; 
+	node_t moved_to;
+} GetResult;
+
+typedef struct CanReceiveResult 
+{
+	bool can_recv;
+	float util;
+	size_t free;
+} CanReceiveResult;
+
+typedef struct GetPartitionTableResult
+{
+	bool success;
+	int num_partitions;
+	int num_replicas;
+	node_t *partition_table; // DO NOT WRITE TO OR FREE THIS!!!
+} GetPartitionTableResult;
+
 #endif /* EDISENSE_TYPES_H */
