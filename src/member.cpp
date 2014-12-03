@@ -7,9 +7,7 @@
 using namespace edisense_comms;
 using namespace std;
 
-Member::Member()
-{
-
+Member::Member() {
 }
 
 future<list<string>> Member::updatePartitionOwner(transaction_t tid, list<string> recipients, node_t newOwner, partition_t partition) {
@@ -17,15 +15,15 @@ future<list<string>> Member::updatePartitionOwner(transaction_t tid, list<string
 }
 
 std::future<bool> Member::canReceiveRequest(transaction_t tid, string &recipient, partition_t partition_id) {
-  return async(launch::async, &Member::remoteCanReceiveRequest, this, tid, recipient, partition_id);
+  return async(launch::async, &Member::remoteCanReceiveRequest, this, tid, ref(recipient), partition_id);
 }
 
 std::future<bool> Member::commitReceiveRequest(transaction_t tid, string &recipient, partition_t partition_id) {
-  return async(launch::async, &Member::remoteCommitReceiveRequest, this, tid, recipient, partition_id);
+  return async(launch::async, &Member::remoteCommitReceiveRequest, this, tid, ref(recipient), partition_id);
 }
 
 std::future<bool> Member::commitAsStableRequest(transaction_t tid, string &recipient, partition_t partition_id) {
-  return async(launch::async, &Member::remoteCommitAsStableRequest, this, tid, recipient, partition_id);
+  return async(launch::async, &Member::remoteCommitAsStableRequest, this, tid, ref(recipient), partition_id);
 }
 
 list<string> Member::remoteUpdatePartitionOwner(transaction_t tid, list<string> recipients, node_t newOwner, partition_t partition) {

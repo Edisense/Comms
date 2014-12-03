@@ -22,6 +22,7 @@ include_directories(ext/zmqpp/src)
 include_directories(src include)
 
 set(SOURCE_FILES include/edisense_comms.h
+                 include/edisense_types.h
                  include/client.h
                  include/monitor.h
                  include/member.h

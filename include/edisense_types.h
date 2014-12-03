@@ -19,6 +19,6 @@ typedef uint16_t partition_t;
 typedef uint64_t transaction_t;
 
 // Binary blob
-typedef std::vector<unsigned char> blob;
+typedef typename std::vector<unsigned char> blob;
 
 #endif /* EDISENSE_TYPES_H */

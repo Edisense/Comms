@@ -68,10 +68,10 @@ protected:
 
   static zmqpp::endpoint_t buildEndpoint(std::string target, int port);
 
-  virtual bool dispositionRequest(zmqpp::message);
+  virtual bool dispositionRequest(zmqpp::message &message);
 
 private:
-  std::atomic<bool> run = false;
+  std::atomic<bool> run = {false};
 
   void startServer();
 
