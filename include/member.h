@@ -1,65 +1,74 @@
+#include <future>
+#include <zmqpp/context.hpp>
+#include <zmqpp/socket.hpp>
 #include "edisense_comms.h"
 #include "edisense_types.h"
 #include "client.h"
 
 namespace edisense_comms {
-  class MemberSubscriber;
-}
+  class MemberServer;
+};
 
 class edisense_comms::Member : Client {
-
-  MemberSubscriber* subscriber;
 
 public:
 
   Member();
 
   /*!
-   * Initializes the member on the network
+    Updates all nodes with the new owner of a partition asynchronously
+
+    \param tid        a transaction ID for the change
+    \param recipients a list of hostnames to broadcast the change to
+    \param newOwner   the node ID for the new owner of a partition
+    \param partition  the partition being reassigned
+    \return a future to be fulfilled with the list of nodes that acknowledged the request
    */
-  virtual void start(MemberSubscriber *subscriber);
+  std::future<std::list<std::string>> updatePartitionOwner(
+      transaction_t tid,
+      std::list<std::string> recipients,
+      node_t newOwner,
+      partition_t partition);
+
 
   /*!
-   * Asks for a node willing to accept this Node's data for a given sensor.  It is expected that only Range owners will
-   * respond to this request
+    send to recipent, which is a hostname
    */
-  messageID sendPrepare(device_t sensor);
+  std::future<bool> canReceiveRequest(transaction_t tid, std::string &recipient, partition_t partition_id);
 
   /*!
-   * Notifies all current nodes that this Node should join the cluster
+    send to recipent, which is a hostname
    */
-  void sendJoin();
+  std::future<bool> commitReceiveRequest(transaction_t tid, std::string &recipient, partition_t partition_id);
 
   /*!
-   * Sends this node's data for a given sensor to another node
+    send to recipent, which is a hostname
    */
-  messageID sendData(node_t nodeId, device_t sensorId, std::string filePath);
+  std::future<bool> commitAsStableRequest(transaction_t tid, std::string &recipient, partition_t partition_id);
+
+private:
+
+  std::list<std::string> remoteUpdatePartitionOwner(transaction_t tid, std::list<std::string> recipients, node_t newOwner, partition_t partition);
+
+  bool remoteCanReceiveRequest(transaction_t tid, std::string &recipient, partition_t partition);
+
+  bool remoteCommitReceiveRequest(transaction_t tid, std::string &recipient, partition_t partition);
+
+  bool remoteCommitAsStableRequest(transaction_t tid, std::string &recipient, partition_t partition);
+
 };
 
-class edisense_comms::MemberSubscriber : public ClientSubscriber {
-public:
-  /*!
-   * Invoked when a set of members have indicated their willingness to receive the data discussed in messageID
-   */
-  virtual void readyReceived(messageID message, std::set<node_t> node) = 0;
+class edisense_comms::MemberServer {
 
-  /*!
-   * Invoked when the member has committed the donation sent in messageID
-   */
-  virtual void donationAccepted(messageID id, node_t node) = 0;
+  virtual bool handleUpdatePartitionOwner(transaction_t tid, std::list<std::string> recipients, node_t newOwner, partition_t partition)
+      = 0;
 
-  /*!
-   * Invoked when a member has asked this node to receive a data donation.  Returns true if this member is willing to
-   * receive the donation
-   *
-   * results in a readyReceived message if true
-   */
-  virtual bool prepare(messageID message, node_t node) = 0;
+  virtual bool handleCanReceiveRequest(transaction_t tid, std::string &recipient, partition_t partition_id)
+      = 0;
 
-  /*!
-   * Invoked when the member has sent data to this node.  Returns true if the transaction concluded successfully.
-   *
-   * Results in a donationAccepted message if true
-   */
-  virtual bool accept() = 0;
+  virtual bool handleCommitReceiveRequest(transaction_t tid, std::string &recipient, partition_t partition_id)
+      = 0;
+
+  virtual bool handleCommitAsStableRequest(transaction_t tid, std::string &recipient, partition_t partition_id)
+      = 0;
 };
