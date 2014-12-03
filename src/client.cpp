@@ -53,12 +53,12 @@ bool Client::dispositionRequest(zmqpp::message &request) { // TODO extract to fu
     ret = true;
     transaction_t tid;
     device_t deviceId;
-    time_t begin;
-    time_t end;
+    uint32_t begin;
+    uint32_t end;
     request >> tid >> deviceId >> begin >> end;
 
     list<blob> value = subscriber->handleGetRequest(tid, deviceId, begin, end);
-    response.push_front((uint64_t) value.size());
+    response.push_front((uint32_t) value.size());
     for(blob b : value) {
       response.push_front(&b[0], b.size());
     }
@@ -66,8 +66,8 @@ bool Client::dispositionRequest(zmqpp::message &request) { // TODO extract to fu
     ret = true;
     transaction_t tid;
     device_t deviceId;
-    time_t timestamp;
-    time_t expiry;
+    uint32_t timestamp;
+    uint32_t expiry;
     request >> tid >> deviceId >> timestamp >> expiry;
 
     response << subscriber->handlePutRequest(tid, deviceId, timestamp, expiry);
@@ -79,7 +79,7 @@ bool Client::dispositionRequest(zmqpp::message &request) { // TODO extract to fu
 list<string> Client::remotePut(transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
   list<string> respondents;
   zmqpp::message message;
-  message << "put" << tid << deviceId << (int64_t) timestamp << (int64_t) expiration;
+  message << "put" << tid << deviceId << (uint32_t) timestamp << (uint32_t) expiration;
   message.push_front(&data[0], data.size());
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
@@ -102,7 +102,7 @@ list<string> Client::remotePut(transaction_t tid, list<string> &recipients, devi
 std::list<blob> Client::remoteGet(transaction_t tid, std::list<std::string> &recipients, device_t deviceId, time_t begin, time_t end) {
   list<blob> data;
   zmqpp::message message;
-  message << "put" << tid << deviceId << (int64_t) begin << (int64_t) end;
+  message << "put" << tid << deviceId << (uint32_t) begin << (uint32_t) end;
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
@@ -112,7 +112,7 @@ std::list<blob> Client::remoteGet(transaction_t tid, std::list<std::string> &rec
     // TODO I think this will actually block until we get a response from everyone - introduce a timeout
     clientSocket.receive(response);
     if (response.remaining() > 0) {
-      size_t length;
+      uint64_t length;
       message >> length;
       // read bytes
     }
