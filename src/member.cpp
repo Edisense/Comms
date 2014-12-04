@@ -2,7 +2,6 @@
 #include <future>
 #include <zmqpp/zmqpp.hpp>
 #include <sstream>
-#include <Foundation/Foundation.h>
 #include "member.h"
 
 #define MSG_UPDATE_PARTITION_OWNER "updatePartitionOwner"
@@ -118,10 +117,10 @@ bool Member::remoteCommitAsStableRequest(transaction_t tid, string &recipient, p
 bool Member::dispositionRequest(string topic, zmqpp::message &message) {
   bool wasRequestProcessed = Client::dispositionRequest(topic, message);
   if (!wasRequestProcessed) {
-    if      ((wasRequestProcessed = (topic == MSG_UPDATE_PARTITION_OWNER  ))) handleUpdatePartitionOwner(message);
-    else if ((wasRequestProcessed = (topic == MSG_CAN_RECEIVE_REQUEST     ))) handleCanReceiveRequest(message);
-    else if ((wasRequestProcessed = (topic == MSG_COMMIT_RECEIVE_REQUEST  ))) handleCommitReceiveRequest(message);
-    else if ((wasRequestProcessed = (topic == MSG_COMMIT_AS_STABLE_REQUEST))) handleCommitAsStableRequest(message);
+    if      ((wasRequestProcessed = (topic == MSG_UPDATE_PARTITION_OWNER  ))) handleUpdatePartitionOwner(&message);
+    else if ((wasRequestProcessed = (topic == MSG_CAN_RECEIVE_REQUEST     ))) handleCanReceiveRequest(&message);
+    else if ((wasRequestProcessed = (topic == MSG_COMMIT_RECEIVE_REQUEST  ))) handleCommitReceiveRequest(&message);
+    else if ((wasRequestProcessed = (topic == MSG_COMMIT_AS_STABLE_REQUEST))) handleCommitAsStableRequest(&message);
   }
   return wasRequestProcessed;
 }

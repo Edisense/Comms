@@ -4,10 +4,6 @@
 #include <list>
 #include <zmqpp/message.hpp>
 #include <sstream>
-#include <Foundation/Foundation.h>
-#include <CoreLocation/CoreLocation.h>
-#include <Python/Python.h>
-#include <AppKit/AppKit.h>
 #include "client.h"
 
 using namespace edisense_comms;
@@ -65,12 +61,12 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
 
     response.add((uint8_t) getResult.status);
     response.add(getResult.moved_to);
-    response.add(getResult.values->size());
+    response.add((uint32_t) getResult.values->size());
     for (Data data : *getResult.values) {
-      response.add(data.data.size());
-      response.add(&data.data[0], data.data.size());
-      response.add(data.expiration);
-      response.add(data.timestamp);
+      response.add((uint32_t)data.data.size());
+      response.add_raw(&data.data[0], data.data.size());
+      response.add((uint32_t) data.expiration);
+      response.add((uint32_t) data.timestamp);
     }
   } else if (topic == "put") {
     wasRequestProcessed = true;
@@ -88,8 +84,8 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
   return wasRequestProcessed;
 }
 
-list<string> Client::remotePut(transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
-  list<string> respondents;
+list<pair<string, PutResult>> Client::remotePut(transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
+  list<pair<string, PutResult>> respondents;
   zmqpp::message message;
   message << "put" << tid << deviceId << (uint32_t) timestamp << (uint32_t) expiration;
   message.push_front(&data[0], data.size());
@@ -104,7 +100,7 @@ list<string> Client::remotePut(transaction_t tid, list<string> &recipients, devi
     bool allGood;
     response >> allGood;
     if (allGood) {
-      respondents.push_back(node);
+//      respondents.push_back(node);
     }
     clientSocket.unbind(endpoint);
   }
@@ -125,12 +121,14 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
     // TODO I think this will actually block until we get a response from everyone - introduce a timeout
     clientSocket.receive(response);
     if (response.remaining() > 0) {
+      int tmpStatus;
       CallStatus status;
       node_t movedNode;
       int dataCount;
       list<Data> *results;
 
-      message >> status;
+      message >> tmpStatus;
+      status = (CallStatus) tmpStatus;
       message >> movedNode;
       message >> dataCount;
 
@@ -140,10 +138,12 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
 
       for (int i = 0; i < dataCount; i++) {
         message >> pointSize;
-        blob point(pointSize);
-        message.get(&point[0], pointSize);
+        unsigned char* rawPoint;
+        rawPoint = (unsigned char *) message.raw_data(pointSize);
         message >> timestamp;
         message >> expiry;
+
+        blob point(rawPoint, rawPoint + pointSize);
 
         Data data = {};
         data.data = point;
