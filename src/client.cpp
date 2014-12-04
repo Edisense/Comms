@@ -4,6 +4,10 @@
 #include <list>
 #include <zmqpp/message.hpp>
 #include <sstream>
+#include <Foundation/Foundation.h>
+#include <CoreLocation/CoreLocation.h>
+#include <Python/Python.h>
+#include <AppKit/AppKit.h>
 #include "client.h"
 
 using namespace edisense_comms;
@@ -32,48 +36,56 @@ void Client::startServer() {
   while (run) {
     zmqpp::message message;
     serverSocket.receive(message);
-    dispositionRequest(message);
+    string requestName;
+    message >> requestName;
+    dispositionRequest(requestName, message);
   }
 }
 
-future<list<string>> Client::put(transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
+future<list<pair<string, PutResult>>> Client::put(transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
   return async(launch::async, &Client::remotePut, this, tid, std::ref(recipients), deviceId, timestamp, expiration, data);
 }
 
-future<list<blob>> Client::get(transaction_t tid, list<string> &recipients, device_t deviceId, time_t begin, time_t end) {
+future<list<GetResult>> Client::get(transaction_t tid, list<string> &recipients, device_t deviceId, time_t begin, time_t end) {
   return async(launch::async, &Client::remoteGet, this, tid, std::ref(recipients), deviceId, begin, end);
 }
 
-bool Client::dispositionRequest(zmqpp::message &request) { // TODO extract to functions
-  bool ret = false;
+bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO extract to functions
+  bool wasRequestProcessed = false;
   zmqpp::message response;
-  string requestName;
-  request >> requestName;
-  if (requestName == "get") {
-    ret = true;
+  if (topic == "get") {
+    wasRequestProcessed = true;
     transaction_t tid;
     device_t deviceId;
     uint32_t begin;
     uint32_t end;
     request >> tid >> deviceId >> begin >> end;
 
-    list<blob> value = subscriber->handleGetRequest(tid, deviceId, begin, end);
-    response.push_front((uint32_t) value.size());
-    for(blob b : value) {
-      response.push_front(&b[0], b.size());
+    GetResult getResult = subscriber->handleGetRequest(tid, deviceId, begin, end);
+
+    response.add((uint8_t) getResult.status);
+    response.add(getResult.moved_to);
+    response.add(getResult.values->size());
+    for (Data data : *getResult.values) {
+      response.add(data.data.size());
+      response.add(&data.data[0], data.data.size());
+      response.add(data.expiration);
+      response.add(data.timestamp);
     }
-  } else if (requestName == "put") {
-    ret = true;
+  } else if (topic == "put") {
+    wasRequestProcessed = true;
     transaction_t tid;
     device_t deviceId;
     uint32_t timestamp;
     uint32_t expiry;
     request >> tid >> deviceId >> timestamp >> expiry;
 
-    response << subscriber->handlePutRequest(tid, deviceId, timestamp, expiry);
+    PutResult result = subscriber->handlePutRequest(tid, deviceId, timestamp, expiry);
+    response.add(result.status);
+    response.add(result.moved_to);
   }
   serverSocket.send(response);
-  return ret;
+  return wasRequestProcessed;
 }
 
 list<string> Client::remotePut(transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
@@ -99,10 +111,11 @@ list<string> Client::remotePut(transaction_t tid, list<string> &recipients, devi
   return respondents;
 }
 
-std::list<blob> Client::remoteGet(transaction_t tid, std::list<std::string> &recipients, device_t deviceId, time_t begin, time_t end) {
-  list<blob> data;
+std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string> &recipients, device_t deviceId, time_t begin, time_t end) {
   zmqpp::message message;
   message << "put" << tid << deviceId << (uint32_t) begin << (uint32_t) end;
+  list<GetResult> combinedResults;
+
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
@@ -112,15 +125,44 @@ std::list<blob> Client::remoteGet(transaction_t tid, std::list<std::string> &rec
     // TODO I think this will actually block until we get a response from everyone - introduce a timeout
     clientSocket.receive(response);
     if (response.remaining() > 0) {
-      uint64_t length;
-      message >> length;
-      // read bytes
+      CallStatus status;
+      node_t movedNode;
+      int dataCount;
+      list<Data> *results;
+
+      message >> status;
+      message >> movedNode;
+      message >> dataCount;
+
+      uint32_t pointSize;
+      uint32_t timestamp;
+      uint32_t expiry;
+
+      for (int i = 0; i < dataCount; i++) {
+        message >> pointSize;
+        blob point(pointSize);
+        message.get(&point[0], pointSize);
+        message >> timestamp;
+        message >> expiry;
+
+        Data data = {};
+        data.data = point;
+        data.timestamp = timestamp;
+        data.expiration = expiry;
+        results->push_back(data);
+      }
+
+      GetResult result = {};
+      result.status = status;
+      result.moved_to = movedNode;
+      result.values = results;
+      combinedResults.push_back(result);
     }
 
     clientSocket.unbind(endpoint);
-    if (!data.empty()) break; // Exit once we've gotten data from any node
+    if (!combinedResults.empty()) break; // Exit once we've gotten data from any node
   }
-  return data;
+  return combinedResults;
 }
 
 zmqpp::endpoint_t Client::buildEndpoint(std::string target, int port) {

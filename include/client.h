@@ -45,7 +45,7 @@ public:
     \param data the binary data to store
     \return a list of recipients that acknowledged the put
    */
-  std::future<std::list<std::string>> put(transaction_t tid, std::list<std::string> &recipients,
+  std::future<std::list<std::pair<std::string, PutResult>>> put(transaction_t tid, std::list<std::string> &recipients,
       device_t deviceId, time_t timestamp, time_t expiration,
       blob data);
 
@@ -58,7 +58,7 @@ public:
     \param end the end of the time range for the query
     \return a list of all binary data falling within the search parameters
    */
-  std::future<std::list<blob>> get(transaction_t tid, std::list<std::string> &recipients,
+  std::future<std::list<GetResult>> get(transaction_t tid, std::list<std::string> &recipients,
       device_t deviceId, time_t begin, time_t end);
 
 protected:
@@ -68,18 +68,18 @@ protected:
 
   static zmqpp::endpoint_t buildEndpoint(std::string target, int port);
 
-  virtual bool dispositionRequest(zmqpp::message &message);
+  virtual bool dispositionRequest(std::string topic, zmqpp::message &message);
 
 private:
   std::atomic<bool> run = {false};
 
   void startServer();
 
-  std::list<std::string> remotePut(transaction_t tid, std::list<std::string> &recipients,
+  std::list<std::pair<std::string, PutResult>> remotePut(transaction_t tid, std::list<std::string> &recipients,
       device_t deviceId, time_t timestamp, time_t expiration,
       blob data);
 
-  std::list<blob> remoteGet(transaction_t tid, std::list<std::string> &recipients,
+  std::list<GetResult> remoteGet(transaction_t tid, std::list<std::string> &recipients,
       device_t deviceId, time_t begin, time_t end);
 };
 
@@ -89,9 +89,9 @@ public:
   /*!
     Handle a request for data
    */
-  virtual std::list<blob> handleGetRequest(transaction_t tid, device_t deviceId, time_t begin, time_t end)
+  virtual GetResult handleGetRequest(transaction_t tid, device_t deviceId, time_t begin, time_t end)
       = 0;
 
-  virtual bool handlePutRequest(transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry)
+  virtual PutResult handlePutRequest(transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry)
       = 0;
 };

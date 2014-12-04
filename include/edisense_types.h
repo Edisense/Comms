@@ -27,18 +27,19 @@ typedef struct Data
 {
 	time_t timestamp;
 	time_t expiration;
-	char data[kMaxDataLen];
+	blob data;
 	size_t datalen;
 } Data;
 
 // for message passing
 
-enum ErrorType
+enum CallStatus
 {
-	DATA_MOVED = 0,
-	DATA_NOT_OWNED = 1,
-	DATA_MOVING = 2,
-	DB_ERROR = 3
+	SUCCESS = 0,
+	DATA_MOVED = 1,
+	DATA_NOT_OWNED = 2,
+	DATA_MOVING = 3,
+	DB_ERROR = 4
 };
 
 typedef struct MessageId
@@ -49,24 +50,22 @@ typedef struct MessageId
 
 typedef struct PutResult
 {
-	bool success;
-	ErrorType error;
+	CallStatus status;
 	node_t moved_to;
 } PutResult;
 
 typedef struct GetResult
 {
-	bool success;
-	ErrorType error;
-	std::list<Data> *values; 
+	CallStatus status;
 	node_t moved_to;
+	std::list<Data> *values;
 } GetResult;
 
 typedef struct CanReceiveResult 
 {
 	bool can_recv;
 	float util;
-	size_t free;
+	uint64_t free;
 } CanReceiveResult;
 
 typedef struct GetPartitionTableResult
