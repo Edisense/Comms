@@ -9,7 +9,7 @@ namespace edisense_comms {
   class MemberServer;
 };
 
-class edisense_comms::Member : Client {
+class edisense_comms::Member : public Client {
   MemberServer *memberHandler;
 public:
 
