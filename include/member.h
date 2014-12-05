@@ -1,9 +1,8 @@
 #include <future>
-#include <zmqpp/context.hpp>
-#include <zmqpp/socket.hpp>
 #include "edisense_comms.h"
 #include "edisense_types.h"
 #include "client.h"
+
 
 namespace edisense_comms {
   class MemberServer;

@@ -1,8 +1,6 @@
 #include <list>
 #include <set>
 #include <string>
-#include <zmqpp/socket.hpp>
-#include <zmqpp/context.hpp>
 #include <future>
 #include <vector>
 #include <ctime>
@@ -13,6 +11,13 @@
 
 namespace edisense_comms {
   class ClientServer;
+}
+
+// Forward declaration to avoid chaining the include dependencies
+namespace zmqpp {
+  class socket;
+  class context;
+  class message;
 }
 
 class edisense_comms::Client {
@@ -62,11 +67,11 @@ public:
       device_t deviceId, time_t begin, time_t end);
 
 protected:
-  zmqpp::context context;
-  zmqpp::socket clientSocket;
-  zmqpp::socket serverSocket;
+  zmqpp::context *context;
+  zmqpp::socket *clientSocket;
+  zmqpp::socket *serverSocket;
 
-  static zmqpp::endpoint_t buildEndpoint(std::string target, int port);
+  static std::string buildEndpoint(std::string target, int port);
 
   virtual bool dispositionRequest(std::string topic, zmqpp::message &message);
 

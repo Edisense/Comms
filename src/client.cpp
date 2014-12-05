@@ -3,19 +3,23 @@
 #include <edisense_types.h>
 #include <list>
 #include <zmqpp/message.hpp>
+#include <zmqpp/socket.hpp>
 #include <sstream>
+#include <zmqpp/context.hpp>
 #include "client.h"
 
 using namespace edisense_comms;
 using namespace std;
 
-Client::Client() :
-  serverSocket(context, zmqpp::socket_type::reply),
-  clientSocket(context, zmqpp::socket_type::request)
-{
-  clientSocket.set(zmqpp::socket_option::receive_timeout, 1000);
-  clientSocket.set(zmqpp::socket_option::send_timeout, 1000);
-  serverSocket.set(zmqpp::socket_option::send_timeout, 1000);
+Client::Client() {
+  context = new zmqpp::context;
+
+  serverSocket = new zmqpp::socket(*context, zmqpp::socket_type::reply);
+  clientSocket = new zmqpp::socket(*context, zmqpp::socket_type::request);
+
+  clientSocket->set(zmqpp::socket_option::receive_timeout, 1000);
+  clientSocket->set(zmqpp::socket_option::send_timeout, 1000);
+  serverSocket->set(zmqpp::socket_option::send_timeout, 1000);
 }
 
 void Client::start(ClientServer *subscriber) {
@@ -31,7 +35,7 @@ void Client::stop() {
 void Client::startServer() {
   while (run) {
     zmqpp::message message;
-    serverSocket.receive(message);
+    serverSocket->receive(message);
     string requestName;
     message >> requestName;
     dispositionRequest(requestName, message);
@@ -80,7 +84,7 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     response.add(result.status);
     response.add(result.moved_to);
   }
-  serverSocket.send(response);
+  serverSocket->send(response);
   return wasRequestProcessed;
 }
 
@@ -92,17 +96,17 @@ list<pair<string, PutResult>> Client::remotePut(transaction_t tid, list<string> 
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
-    clientSocket.bind(endpoint);
-    clientSocket.send(message);
+    clientSocket->bind(endpoint);
+    clientSocket->send(message);
 
     // TODO I think this will actually block until we get a response from everyone - introduce a timeout
-    clientSocket.receive(response);
+    clientSocket->receive(response);
     bool allGood;
     response >> allGood;
     if (allGood) {
 //      respondents.push_back(node);
     }
-    clientSocket.unbind(endpoint);
+    clientSocket->unbind(endpoint);
   }
   return respondents;
 }
@@ -115,11 +119,11 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
-    clientSocket.bind(endpoint);
-    clientSocket.send(message);
+    clientSocket->bind(endpoint);
+    clientSocket->send(message);
 
     // TODO I think this will actually block until we get a response from everyone - introduce a timeout
-    clientSocket.receive(response);
+    clientSocket->receive(response);
     if (response.remaining() > 0) {
       int tmpStatus;
       CallStatus status;
@@ -159,13 +163,13 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
       combinedResults.push_back(result);
     }
 
-    clientSocket.unbind(endpoint);
+    clientSocket->unbind(endpoint);
     if (!combinedResults.empty()) break; // Exit once we've gotten data from any node
   }
   return combinedResults;
 }
 
-zmqpp::endpoint_t Client::buildEndpoint(std::string target, int port) {
+std::string Client::buildEndpoint(std::string target, int port) {
   stringstream buf;
   buf << "tcp://" << target << ':' << port;
   return buf.str();

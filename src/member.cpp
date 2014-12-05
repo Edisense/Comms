@@ -45,17 +45,17 @@ list<string> Member::remoteUpdatePartitionOwner(transaction_t tid, list<string> 
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
-    clientSocket.bind(endpoint);
-    clientSocket.send(message);
+    clientSocket->bind(endpoint);
+    clientSocket->send(message);
 
     // TODO I think this will actually block until we get a response from everyone - introduce a timeout
-    clientSocket.receive(response);
+    clientSocket->receive(response);
     bool allGood;
     response >> allGood;
     if (allGood) {
       respondents.push_back(node);
     }
-    clientSocket.unbind(endpoint);
+    clientSocket->unbind(endpoint);
   }
   return respondents;
 }
@@ -65,11 +65,11 @@ CanReceiveResult Member::remoteCanReceiveRequest(transaction_t tid, string &reci
   zmqpp::message message;
   message << MSG_CAN_RECEIVE_REQUEST << tid << partition;
   zmqpp::message response;
-  clientSocket.bind(endpoint);
-  clientSocket.send(message);
+  clientSocket->bind(endpoint);
+  clientSocket->send(message);
 
-  clientSocket.receive(response);
-  clientSocket.unbind(endpoint);
+  clientSocket->receive(response);
+  clientSocket->unbind(endpoint);
 
   bool canReceive;
   uint64_t free;
@@ -87,11 +87,11 @@ bool Member::remoteCommitReceiveRequest(transaction_t tid, string &recipient, pa
   zmqpp::message message;
   message << MSG_COMMIT_RECEIVE_REQUEST << tid << partition;
   zmqpp::message response;
-  clientSocket.bind(endpoint);
-  clientSocket.send(message);
+  clientSocket->bind(endpoint);
+  clientSocket->send(message);
 
-  clientSocket.receive(response);
-  clientSocket.unbind(endpoint);
+  clientSocket->receive(response);
+  clientSocket->unbind(endpoint);
 
   bool allGood;
   response >> allGood;
@@ -103,11 +103,11 @@ bool Member::remoteCommitAsStableRequest(transaction_t tid, string &recipient, p
   zmqpp::message message;
   message << MSG_COMMIT_AS_STABLE_REQUEST << tid << partition;
   zmqpp::message response;
-  clientSocket.bind(endpoint);
-  clientSocket.send(message);
+  clientSocket->bind(endpoint);
+  clientSocket->send(message);
 
-  clientSocket.receive(response);
-  clientSocket.unbind(endpoint);
+  clientSocket->receive(response);
+  clientSocket->unbind(endpoint);
 
   bool allGood;
   response >> allGood;
@@ -134,7 +134,7 @@ void Member::handleUpdatePartitionOwner(zmqpp::message message) {
 
   bool allGood = memberHandler->handleUpdatePartitionOwner(tid, owner, partition);
   response << allGood;
-  serverSocket.send(response);
+  serverSocket->send(response);
 }
 
 void Member::handleCanReceiveRequest(zmqpp::message message) {
@@ -145,7 +145,7 @@ void Member::handleCanReceiveRequest(zmqpp::message message) {
 
   CanReceiveResult result = memberHandler->handleCanReceiveRequest(tid, partition);
   response << result.can_recv << result.free << result.util;
-  serverSocket.send(response);
+  serverSocket->send(response);
 }
 
 void Member::handleCommitReceiveRequest(zmqpp::message message) {
@@ -156,7 +156,7 @@ void Member::handleCommitReceiveRequest(zmqpp::message message) {
 
   bool allGood = memberHandler->handleCommitReceiveRequest(tid, partition);
   response << allGood;
-  serverSocket.send(response);
+  serverSocket->send(response);
 }
 
 void Member::handleCommitAsStableRequest(zmqpp::message message) {
@@ -167,5 +167,5 @@ void Member::handleCommitAsStableRequest(zmqpp::message message) {
 
   bool allGood = memberHandler->handleCommitAsStableRequest(tid, partition);
   response << allGood;
-  serverSocket.send(response);
+  serverSocket->send(response);
 }

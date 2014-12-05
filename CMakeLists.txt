@@ -34,7 +34,7 @@ set(SOURCE_FILES include/edisense_comms.h
 add_library(EdisenseComms ${SOURCE_FILES})
 
 target_link_libraries(EdisenseComms ${CMAKE_THREAD_LIBS_INIT})
-target_link_libraries(EdisenseComms ${zmqpp})
+target_link_libraries(EdisenseComms zmqpp)
 
 
 
