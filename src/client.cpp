@@ -33,6 +33,7 @@ void Client::stop() {
 }
 
 void Client::startServer() {
+  serverSocket->bind(buildEndpoint("*", SERVER_SOCKET_PORT));
   while (run) {
     zmqpp::message message;
     serverSocket->receive(message);
@@ -96,7 +97,7 @@ list<pair<string, PutResult>> Client::remotePut(transaction_t tid, list<string> 
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
-    clientSocket->bind(endpoint);
+    clientSocket->connect(endpoint);
     clientSocket->send(message);
 
     // TODO I think this will actually block until we get a response from everyone - introduce a timeout
@@ -106,7 +107,7 @@ list<pair<string, PutResult>> Client::remotePut(transaction_t tid, list<string> 
     if (allGood) {
 //      respondents.push_back(node);
     }
-    clientSocket->unbind(endpoint);
+    clientSocket->disconnect(endpoint);
   }
   return respondents;
 }
@@ -119,7 +120,7 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
-    clientSocket->bind(endpoint);
+    clientSocket->connect(endpoint);
     clientSocket->send(message);
 
     // TODO I think this will actually block until we get a response from everyone - introduce a timeout
@@ -163,7 +164,7 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
       combinedResults.push_back(result);
     }
 
-    clientSocket->unbind(endpoint);
+    clientSocket->disconnect(endpoint);
     if (!combinedResults.empty()) break; // Exit once we've gotten data from any node
   }
   return combinedResults;
