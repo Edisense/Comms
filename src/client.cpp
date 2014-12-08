@@ -31,16 +31,13 @@ void Client::start(ClientServer *subscriber) {
 
 void Client::stop() {
   run = false;
+  serverSocket->disconnect(buildEndpoint("*", SERVER_SOCKET_PORT));
 }
 
 void Client::startServer() {
-  std::cout << "Starting ZMQPP Server..." << std::endl;
 
   zmqpp::endpoint_t acceptAll = buildEndpoint("*", SERVER_SOCKET_PORT);
-
   serverSocket->bind(acceptAll);
-
-  std::cout << "ZMQPP Server running" << std::endl;
 
   while (run) {
     zmqpp::message message;
@@ -92,7 +89,7 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     request >> tid >> deviceId >> timestamp >> expiry;
 
     PutResult result = subscriber->handlePutRequest(tid, deviceId, timestamp, expiry);
-    response.add(result.status);
+    response.add((uint8_t) result.status);
     response.add(result.moved_to);
   }
   serverSocket->send(response);
@@ -103,7 +100,7 @@ list<pair<string, PutResult>> Client::remotePut(transaction_t tid, list<string> 
   list<pair<string, PutResult>> respondents;
   zmqpp::message message;
   message << "put" << tid << deviceId << (uint32_t) timestamp << (uint32_t) expiration;
-  message.push_front(&data[0], data.size());
+  message.push_back(&data[0], data.size());
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
@@ -112,11 +109,17 @@ list<pair<string, PutResult>> Client::remotePut(transaction_t tid, list<string> 
 
     // TODO I think this will actually block until we get a response from everyone - introduce a timeout
     clientSocket->receive(response);
-    bool allGood;
-    response >> allGood;
-    if (allGood) {
-//      respondents.push_back(node);
-    }
+    uint8_t tmpStatus;
+    node_t movedTo;
+    response >> tmpStatus >> movedTo;
+
+    PutResult result = {};
+    result.status = (CallStatus) tmpStatus;
+    result.moved_to = movedTo;
+
+    pair<string, PutResult> respondent(node, result);
+
+    respondents.push_back(respondent);
     clientSocket->disconnect(endpoint);
   }
   return respondents;
