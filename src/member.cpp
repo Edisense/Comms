@@ -117,15 +117,15 @@ bool Member::remoteCommitAsStableRequest(transaction_t tid, string &recipient, p
 bool Member::dispositionRequest(string topic, zmqpp::message &message) {
   bool wasRequestProcessed = Client::dispositionRequest(topic, message);
   if (!wasRequestProcessed) {
-    if      ((wasRequestProcessed = (topic == MSG_UPDATE_PARTITION_OWNER  ))) handleUpdatePartitionOwner(&message);
-    else if ((wasRequestProcessed = (topic == MSG_CAN_RECEIVE_REQUEST     ))) handleCanReceiveRequest(&message);
-    else if ((wasRequestProcessed = (topic == MSG_COMMIT_RECEIVE_REQUEST  ))) handleCommitReceiveRequest(&message);
-    else if ((wasRequestProcessed = (topic == MSG_COMMIT_AS_STABLE_REQUEST))) handleCommitAsStableRequest(&message);
+    if      ((wasRequestProcessed = (topic == MSG_UPDATE_PARTITION_OWNER  ))) handleUpdatePartitionOwner(message);
+    else if ((wasRequestProcessed = (topic == MSG_CAN_RECEIVE_REQUEST     ))) handleCanReceiveRequest(message);
+    else if ((wasRequestProcessed = (topic == MSG_COMMIT_RECEIVE_REQUEST  ))) handleCommitReceiveRequest(message);
+    else if ((wasRequestProcessed = (topic == MSG_COMMIT_AS_STABLE_REQUEST))) handleCommitAsStableRequest(message);
   }
   return wasRequestProcessed;
 }
 
-void Member::handleUpdatePartitionOwner(zmqpp::message message) {
+void Member::handleUpdatePartitionOwner(zmqpp::message &message) {
   zmqpp::message response;
   transaction_t tid;
   node_t owner;
@@ -137,7 +137,7 @@ void Member::handleUpdatePartitionOwner(zmqpp::message message) {
   serverSocket->send(response);
 }
 
-void Member::handleCanReceiveRequest(zmqpp::message message) {
+void Member::handleCanReceiveRequest(zmqpp::message &message) {
   zmqpp::message response;
   transaction_t tid;
   partition_t partition;
@@ -148,7 +148,7 @@ void Member::handleCanReceiveRequest(zmqpp::message message) {
   serverSocket->send(response);
 }
 
-void Member::handleCommitReceiveRequest(zmqpp::message message) {
+void Member::handleCommitReceiveRequest(zmqpp::message &message) {
   zmqpp::message response;
   transaction_t tid;
   partition_t partition;
@@ -159,7 +159,7 @@ void Member::handleCommitReceiveRequest(zmqpp::message message) {
   serverSocket->send(response);
 }
 
-void Member::handleCommitAsStableRequest(zmqpp::message message) {
+void Member::handleCommitAsStableRequest(zmqpp::message &message) {
   zmqpp::message response;
   transaction_t tid;
   partition_t partition;

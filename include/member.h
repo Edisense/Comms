@@ -61,13 +61,13 @@ private:
 
   bool remoteCommitAsStableRequest(transaction_t tid, std::string &recipient, partition_t partition);
 
-  void handleUpdatePartitionOwner(zmqpp::message message);
+  void handleUpdatePartitionOwner(zmqpp::message &message);
 
-  void handleCanReceiveRequest(zmqpp::message message);
+  void handleCanReceiveRequest(zmqpp::message &message);
 
-  void handleCommitReceiveRequest(zmqpp::message message);
+  void handleCommitReceiveRequest(zmqpp::message &message);
 
-  void handleCommitAsStableRequest(zmqpp::message message);
+  void handleCommitAsStableRequest(zmqpp::message &message);
 
 
 };

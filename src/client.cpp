@@ -80,6 +80,7 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
       response.add((uint32_t) data.expiration);
       response.add((uint32_t) data.timestamp);
     }
+    serverSocket->send(response);
   } else if (topic == "put") {
     wasRequestProcessed = true;
     transaction_t tid;
@@ -91,8 +92,8 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     PutResult result = subscriber->handlePutRequest(tid, deviceId, timestamp, expiry);
     response.add((uint8_t) result.status);
     response.add(result.moved_to);
+    serverSocket->send(response);
   }
-  serverSocket->send(response);
   return wasRequestProcessed;
 }
 

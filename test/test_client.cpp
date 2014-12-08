@@ -24,7 +24,7 @@ TEST_F(ClientTest, RunGetRequest) {
   std::list<std::string> recipients;
   recipients.push_back("localhost");
   std::future<std::list<GetResult>> resultsSoon = client->get(12345, recipients, 12, 1000, 2000);
-  std::future_status status = resultsSoon.wait_for(std::chrono::seconds(10));
+  std::future_status status = resultsSoon.wait_for(std::chrono::seconds(2));
   ASSERT_EQ(std::future_status::ready, status);
   std::list<GetResult> results = resultsSoon.get();
   EXPECT_EQ(1, results.size());
@@ -36,7 +36,7 @@ TEST_F(ClientTest, RunPutRequest) {
   blob data;
   data.push_back('a');
   std::future<std::list<std::pair<std::string,PutResult>>> resultsSoon = client->put(12345, recipients, 12, 1001, 5000, data);
-  std::future_status status = resultsSoon.wait_for(std::chrono::seconds(10));
+  std::future_status status = resultsSoon.wait_for(std::chrono::seconds(2));
   ASSERT_EQ(std::future_status::ready, status);
   std::list<std::pair<std::string,PutResult>> results = resultsSoon.get();
   EXPECT_EQ(1, results.size());
@@ -58,14 +58,15 @@ PutResult ClientTest::handlePutRequest(transaction_t tid, device_t deviceId, tim
   return result;
 }
 
+void ClientTest::SetUp() {
+  Test::SetUp();
+  client = new edisense_comms::Client();
+  client->start(this);
+}
+
 void ClientTest::TearDown() {
   Test::TearDown();
   client->stop();
   delete client;
 }
 
-void ClientTest::SetUp() {
-  Test::SetUp();
-  client = new edisense_comms::Client();
-  client->start(this);
-}
