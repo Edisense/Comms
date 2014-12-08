@@ -25,7 +25,8 @@ Client::Client() {
 void Client::start(ClientServer *subscriber) {
   this->subscriber = subscriber;
   run = true;
-  std::thread(&Client::startServer, this);
+  server = std::thread(&Client::startServer, this);
+  server.detach();
 }
 
 void Client::stop() {
@@ -33,7 +34,14 @@ void Client::stop() {
 }
 
 void Client::startServer() {
-  serverSocket->bind(buildEndpoint("*", SERVER_SOCKET_PORT));
+  std::cout << "Starting ZMQPP Server..." << std::endl;
+
+  zmqpp::endpoint_t acceptAll = buildEndpoint("*", SERVER_SOCKET_PORT);
+
+  serverSocket->bind(acceptAll);
+
+  std::cout << "ZMQPP Server running" << std::endl;
+
   while (run) {
     zmqpp::message message;
     serverSocket->receive(message);
@@ -41,6 +49,8 @@ void Client::startServer() {
     message >> requestName;
     dispositionRequest(requestName, message);
   }
+
+  serverSocket->unbind(acceptAll);
 }
 
 future<list<pair<string, PutResult>>> Client::put(transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
@@ -114,7 +124,7 @@ list<pair<string, PutResult>> Client::remotePut(transaction_t tid, list<string> 
 
 std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string> &recipients, device_t deviceId, time_t begin, time_t end) {
   zmqpp::message message;
-  message << "put" << tid << deviceId << (uint32_t) begin << (uint32_t) end;
+  message << "get" << tid << deviceId << (uint32_t) begin << (uint32_t) end;
   list<GetResult> combinedResults;
 
   for(string node : recipients) {
@@ -123,30 +133,29 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
     clientSocket->connect(endpoint);
     clientSocket->send(message);
 
-    // TODO I think this will actually block until we get a response from everyone - introduce a timeout
     clientSocket->receive(response);
     if (response.remaining() > 0) {
-      int tmpStatus;
+      uint8_t tmpStatus;
       CallStatus status;
       node_t movedNode;
       int dataCount;
       list<Data> *results;
 
-      message >> tmpStatus;
+      response >> tmpStatus;
       status = (CallStatus) tmpStatus;
-      message >> movedNode;
-      message >> dataCount;
+      response >> movedNode;
+      response >> dataCount;
 
       uint32_t pointSize;
       uint32_t timestamp;
       uint32_t expiry;
 
       for (int i = 0; i < dataCount; i++) {
-        message >> pointSize;
+        response >> pointSize;
         unsigned char* rawPoint;
         rawPoint = (unsigned char *) message.raw_data(pointSize);
-        message >> timestamp;
-        message >> expiry;
+        response >> timestamp;
+        response >> expiry;
 
         blob point(rawPoint, rawPoint + pointSize);
 

@@ -36,5 +36,28 @@ add_library(EdisenseComms ${SOURCE_FILES})
 target_link_libraries(EdisenseComms ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(EdisenseComms zmqpp)
 
+# GTest
+add_subdirectory (ext/gtest-1.7.0)
+enable_testing()
+include_directories(${gtest_SOURCE_DIR}/include ${gtest_SOURCE_DIR})
+
+# Unit Tests
+
+set(TEST_SOURCES test/test_client.cpp
+                 test/test_member.cpp
+                 include/edisense_types.h
+                 include/member.h
+                 include/client.h)
+
+## Add test cpp file
+add_executable( runUnitTests ${TEST_SOURCES} )
+
+## Link test executable against gtest & gtest_main
+target_link_libraries(runUnitTests gtest gtest_main)
+target_link_libraries(runUnitTests EdisenseComms)
+target_link_libraries(runUnitTests zmqpp)
+add_test( runUnitTests runUnitTests )
+
+
 
 

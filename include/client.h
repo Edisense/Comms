@@ -77,6 +77,7 @@ protected:
 
 private:
   std::atomic<bool> run = {false};
+  std::thread server;
 
   void startServer();
 
