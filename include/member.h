@@ -1,3 +1,6 @@
+#ifndef MEMBER_H
+#define MEMBER_H
+
 #include <future>
 #include "edisense_comms.h"
 #include "edisense_types.h"
@@ -26,6 +29,7 @@ public:
     \return a future to be fulfilled with the list of nodes that acknowledged the request
    */
   std::future<std::list<std::string>> updatePartitionOwner(
+      node_t sender,
       transaction_t tid,
       std::list<std::string> recipients,
       node_t newOwner,
@@ -35,17 +39,17 @@ public:
   /*!
     send to recipent, which is a hostname
    */
-  std::future<CanReceiveResult> canReceiveRequest(transaction_t tid, std::string &recipient, partition_t partition_id);
+  std::future<CanReceiveResult> canReceiveRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition_id);
 
   /*!
     send to recipent, which is a hostname
    */
-  std::future<bool> commitReceiveRequest(transaction_t tid, std::string &recipient, partition_t partition_id);
+  std::future<bool> commitReceiveRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition_id);
 
   /*!
     send to recipent, which is a hostname
    */
-  std::future<bool> commitAsStableRequest(transaction_t tid, std::string &recipient, partition_t partition_id);
+  std::future<bool> commitAsStableRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition_id);
 
 protected:
 
@@ -53,13 +57,13 @@ protected:
 
 private:
 
-  std::list<std::string> remoteUpdatePartitionOwner(transaction_t tid, std::list<std::string> recipients, node_t newOwner, partition_t partition);
+  std::list<std::string> remoteUpdatePartitionOwner(node_t sender, transaction_t tid, std::list<std::string> recipients, node_t newOwner, partition_t partition);
 
-  CanReceiveResult remoteCanReceiveRequest(transaction_t tid, std::string &recipient, partition_t partition);
+  CanReceiveResult remoteCanReceiveRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition);
 
-  bool remoteCommitReceiveRequest(transaction_t tid, std::string &recipient, partition_t partition);
+  bool remoteCommitReceiveRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition);
 
-  bool remoteCommitAsStableRequest(transaction_t tid, std::string &recipient, partition_t partition);
+  bool remoteCommitAsStableRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition);
 
   void handleUpdatePartitionOwner(zmqpp::message &message);
 
@@ -74,15 +78,17 @@ private:
 
 class edisense_comms::MemberServer : public ClientServer {
 public:
-  virtual bool handleUpdatePartitionOwner(transaction_t tid, node_t newOwner, partition_t partition)
+  virtual bool handleUpdatePartitionOwner(node_t sender, transaction_t tid, node_t newOwner, partition_t partition)
       = 0;
 
-  virtual CanReceiveResult handleCanReceiveRequest(transaction_t tid, partition_t partition_id)
+  virtual CanReceiveResult handleCanReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id)
       = 0;
 
-  virtual bool handleCommitReceiveRequest(transaction_t tid, partition_t partition_id)
+  virtual bool handleCommitReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id)
       = 0;
 
-  virtual bool handleCommitAsStableRequest(transaction_t tid, partition_t partition_id)
+  virtual bool handleCommitAsStableRequest(node_t sender, transaction_t tid, partition_t partition_id)
       = 0;
 };
+
+#endif /* MEMBER_H */

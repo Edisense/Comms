@@ -50,8 +50,8 @@ void Client::startServer() {
   serverSocket->unbind(acceptAll);
 }
 
-future<list<pair<string, PutResult>>> Client::put(transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
-  return async(launch::async, &Client::remotePut, this, tid, std::ref(recipients), deviceId, timestamp, expiration, data);
+future<list<pair<string, PutResult>>> Client::put(node_t sender, transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
+  return async(launch::async, &Client::remotePut, this, sender, tid, std::ref(recipients), deviceId, timestamp, expiration, data);
 }
 
 future<list<GetResult>> Client::get(transaction_t tid, list<string> &recipients, device_t deviceId, time_t begin, time_t end) {
@@ -83,13 +83,19 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     serverSocket->send(response);
   } else if (topic == "put") {
     wasRequestProcessed = true;
+    node_t sender;
     transaction_t tid;
     device_t deviceId;
     uint32_t timestamp;
     uint32_t expiry;
-    request >> tid >> deviceId >> timestamp >> expiry;
+    uint32_t blobSize;
+    request >> sender >> tid >> deviceId >> timestamp >> expiry;
+    request >> blobSize;
+    unsigned char* rawPoint;
+    rawPoint = (unsigned char *) request.raw_data(blobSize);
+    blob point(rawPoint, rawPoint + blobSize);
 
-    PutResult result = subscriber->handlePutRequest(tid, deviceId, timestamp, expiry);
+    PutResult result = subscriber->handlePutRequest(sender, tid, deviceId, timestamp, expiry, point);
     response.add((uint8_t) result.status);
     response.add(result.moved_to);
     serverSocket->send(response);
@@ -97,11 +103,12 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
   return wasRequestProcessed;
 }
 
-list<pair<string, PutResult>> Client::remotePut(transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
+list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
   list<pair<string, PutResult>> respondents;
   zmqpp::message message;
-  message << "put" << tid << deviceId << (uint32_t) timestamp << (uint32_t) expiration;
-  message.push_back(&data[0], data.size());
+  message << "put" << sender << tid << deviceId << (uint32_t) timestamp << (uint32_t) expiration;
+  message << (uint32_t) data.size();
+  message.add_raw(&data[0], data.size());
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
@@ -113,7 +120,6 @@ list<pair<string, PutResult>> Client::remotePut(transaction_t tid, list<string> 
     uint8_t tmpStatus;
     node_t movedTo;
     response >> tmpStatus >> movedTo;
-
     PutResult result = {};
     result.status = (CallStatus) tmpStatus;
     result.moved_to = movedTo;

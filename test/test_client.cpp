@@ -17,7 +17,7 @@ protected:
 public:
   virtual GetResult handleGetRequest(transaction_t tid, device_t deviceId, time_t begin, time_t end);
 
-  virtual PutResult handlePutRequest(transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry);
+  virtual PutResult handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data);
 };
 
 TEST_F(ClientTest, RunGetRequest) {
@@ -35,7 +35,7 @@ TEST_F(ClientTest, RunPutRequest) {
   recipients.push_back("localhost");
   blob data;
   data.push_back('a');
-  std::future<std::list<std::pair<std::string,PutResult>>> resultsSoon = client->put(12345, recipients, 12, 1001, 5000, data);
+  std::future<std::list<std::pair<std::string,PutResult>>> resultsSoon = client->put(1, 12345, recipients, 12, 1001, 5000, data);
   std::future_status status = resultsSoon.wait_for(std::chrono::seconds(2));
   ASSERT_EQ(std::future_status::ready, status);
   std::list<std::pair<std::string,PutResult>> results = resultsSoon.get();
@@ -51,7 +51,7 @@ GetResult ClientTest::handleGetRequest(transaction_t tid, device_t deviceId, tim
   return result;
 }
 
-PutResult ClientTest::handlePutRequest(transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry) {
+PutResult ClientTest::handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data) {
   PutResult result;
   result.moved_to = 0;
   result.status = CallStatus::SUCCESS;

@@ -21,26 +21,26 @@ void Member::start(MemberServer*  handler) {
   Client::start(handler);
 }
 
-future<list<string>> Member::updatePartitionOwner(transaction_t tid, list<string> recipients, node_t newOwner, partition_t partition) {
-  return async(launch::async, &Member::remoteUpdatePartitionOwner, this, tid, recipients, newOwner, partition);
+future<list<string>> Member::updatePartitionOwner(node_t sender, transaction_t tid, list<string> recipients, node_t newOwner, partition_t partition) {
+  return async(launch::async, &Member::remoteUpdatePartitionOwner, this, sender, tid, recipients, newOwner, partition);
 }
 
-std::future<CanReceiveResult> Member::canReceiveRequest(transaction_t tid, string &recipient, partition_t partition_id) {
-  return async(launch::async, &Member::remoteCanReceiveRequest, this, tid, ref(recipient), partition_id);
+std::future<CanReceiveResult> Member::canReceiveRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition_id) {
+  return async(launch::async, &Member::remoteCanReceiveRequest, this, sender, tid, ref(recipient), partition_id);
 }
 
-std::future<bool> Member::commitReceiveRequest(transaction_t tid, string &recipient, partition_t partition_id) {
-  return async(launch::async, &Member::remoteCommitReceiveRequest, this, tid, ref(recipient), partition_id);
+std::future<bool> Member::commitReceiveRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition_id) {
+  return async(launch::async, &Member::remoteCommitReceiveRequest, this, sender,  tid, ref(recipient), partition_id);
 }
 
-std::future<bool> Member::commitAsStableRequest(transaction_t tid, string &recipient, partition_t partition_id) {
-  return async(launch::async, &Member::remoteCommitAsStableRequest, this, tid, ref(recipient), partition_id);
+std::future<bool> Member::commitAsStableRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition_id) {
+  return async(launch::async, &Member::remoteCommitAsStableRequest, this, sender,  tid, ref(recipient), partition_id);
 }
 
-list<string> Member::remoteUpdatePartitionOwner(transaction_t tid, list<string> recipients, node_t newOwner, partition_t partition) {
+list<string> Member::remoteUpdatePartitionOwner(node_t sender, transaction_t tid, list<string> recipients, node_t newOwner, partition_t partition) {
   list<string> respondents;
   zmqpp::message message;
-  message << MSG_UPDATE_PARTITION_OWNER << tid << newOwner << partition;
+  message << MSG_UPDATE_PARTITION_OWNER << sender << tid << newOwner << partition;
 
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
@@ -60,10 +60,10 @@ list<string> Member::remoteUpdatePartitionOwner(transaction_t tid, list<string> 
   return respondents;
 }
 
-CanReceiveResult Member::remoteCanReceiveRequest(transaction_t tid, string &recipient, partition_t partition) {
+CanReceiveResult Member::remoteCanReceiveRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition) {
   zmqpp::endpoint_t endpoint = buildEndpoint(recipient, SERVER_SOCKET_PORT);
   zmqpp::message message;
-  message << MSG_CAN_RECEIVE_REQUEST << tid << partition;
+  message << MSG_CAN_RECEIVE_REQUEST << sender << tid << partition;
   zmqpp::message response;
   clientSocket->connect(endpoint);
   clientSocket->send(message);
@@ -82,10 +82,10 @@ CanReceiveResult Member::remoteCanReceiveRequest(transaction_t tid, string &reci
   return result;
 }
 
-bool Member::remoteCommitReceiveRequest(transaction_t tid, string &recipient, partition_t partition) {
+bool Member::remoteCommitReceiveRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition) {
   zmqpp::endpoint_t endpoint = buildEndpoint(recipient, SERVER_SOCKET_PORT);
   zmqpp::message message;
-  message << MSG_COMMIT_RECEIVE_REQUEST << tid << partition;
+  message << MSG_COMMIT_RECEIVE_REQUEST << sender << tid << partition;
   zmqpp::message response;
   clientSocket->connect(endpoint);
   clientSocket->send(message);
@@ -98,10 +98,10 @@ bool Member::remoteCommitReceiveRequest(transaction_t tid, string &recipient, pa
   return allGood;
 }
 
-bool Member::remoteCommitAsStableRequest(transaction_t tid, string &recipient, partition_t partition) {
+bool Member::remoteCommitAsStableRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition) {
   zmqpp::endpoint_t endpoint = buildEndpoint(recipient, SERVER_SOCKET_PORT);
   zmqpp::message message;
-  message << MSG_COMMIT_AS_STABLE_REQUEST << tid << partition;
+  message << MSG_COMMIT_AS_STABLE_REQUEST << sender << tid << partition;
   zmqpp::message response;
   clientSocket->connect(endpoint);
   clientSocket->send(message);
@@ -127,45 +127,49 @@ bool Member::dispositionRequest(string topic, zmqpp::message &message) {
 
 void Member::handleUpdatePartitionOwner(zmqpp::message &message) {
   zmqpp::message response;
+  node_t sender;
   transaction_t tid;
   node_t owner;
   partition_t partition;
-  message >> tid >> owner >> partition;
+  message >> sender >> tid >> owner >> partition;
 
-  bool allGood = memberHandler->handleUpdatePartitionOwner(tid, owner, partition);
+  bool allGood = memberHandler->handleUpdatePartitionOwner(sender, tid, owner, partition);
   response << allGood;
   serverSocket->send(response);
 }
 
 void Member::handleCanReceiveRequest(zmqpp::message &message) {
   zmqpp::message response;
+  node_t sender;
   transaction_t tid;
   partition_t partition;
-  message >> tid >> partition;
+  message >> sender >> tid >> partition;
 
-  CanReceiveResult result = memberHandler->handleCanReceiveRequest(tid, partition);
+  CanReceiveResult result = memberHandler->handleCanReceiveRequest(sender, tid, partition);
   response << result.can_recv << result.free << result.util;
   serverSocket->send(response);
 }
 
 void Member::handleCommitReceiveRequest(zmqpp::message &message) {
   zmqpp::message response;
+  node_t sender;
   transaction_t tid;
   partition_t partition;
-  message >> tid >> partition;
+  message >> sender >> tid >> partition;
 
-  bool allGood = memberHandler->handleCommitReceiveRequest(tid, partition);
+  bool allGood = memberHandler->handleCommitReceiveRequest(sender, tid, partition);
   response << allGood;
   serverSocket->send(response);
 }
 
 void Member::handleCommitAsStableRequest(zmqpp::message &message) {
   zmqpp::message response;
+  node_t sender;
   transaction_t tid;
   partition_t partition;
-  message >> tid >> partition;
+  message >> sender >> tid >> partition;
 
-  bool allGood = memberHandler->handleCommitAsStableRequest(tid, partition);
+  bool allGood = memberHandler->handleCommitAsStableRequest(sender, tid, partition);
   response << allGood;
   serverSocket->send(response);
 }

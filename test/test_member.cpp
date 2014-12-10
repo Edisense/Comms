@@ -20,22 +20,22 @@ protected:
 public:
   virtual GetResult handleGetRequest(transaction_t tid, device_t deviceId, time_t begin, time_t end);
 
-  virtual PutResult handlePutRequest(transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry);
+  virtual PutResult handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data);
 
-  virtual bool handleUpdatePartitionOwner(transaction_t tid, node_t newOwner, partition_t partition);
+  virtual bool handleUpdatePartitionOwner(node_t sender, transaction_t tid, node_t newOwner, partition_t partition);
 
-  virtual CanReceiveResult handleCanReceiveRequest(transaction_t tid, partition_t partition_id);
+  virtual CanReceiveResult handleCanReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id);
 
-  virtual bool handleCommitReceiveRequest(transaction_t tid, partition_t partition_id);
+  virtual bool handleCommitReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id);
 
-  virtual bool handleCommitAsStableRequest(transaction_t tid, partition_t partition_id);
+  virtual bool handleCommitAsStableRequest(node_t sender, transaction_t tid, partition_t partition_id);
 };
 
 TEST_F(MemberTest, TestUpdatePartitionRequest)
 {
   std::list<std::string> recipients;
   recipients.push_back("localhost");
-  std::future<std::list<std::string>> resultsSoon = member->updatePartitionOwner(12345, recipients, 12, 123);
+  std::future<std::list<std::string>> resultsSoon = member->updatePartitionOwner(1, 12345, recipients, 12, 123);
   std::future_status status = resultsSoon.wait_for(std::chrono::seconds(2));
   ASSERT_EQ(std::future_status::ready, status);
   std::list<std::string> results = resultsSoon.get();
@@ -47,7 +47,7 @@ TEST_F(MemberTest, TestUpdatePartitionRequest)
 TEST_F(MemberTest, TestCanReceiveRequest)
 {
   std::string recipient = "localhost";
-  std::future<CanReceiveResult> resultsSoon = member->canReceiveRequest(12345, recipient, 123);
+  std::future<CanReceiveResult> resultsSoon = member->canReceiveRequest(1, 12345, recipient, 123);
   std::future_status status = resultsSoon.wait_for(std::chrono::seconds(2));
   ASSERT_EQ(std::future_status::ready, status);
   CanReceiveResult result = resultsSoon.get();
@@ -58,7 +58,7 @@ TEST_F(MemberTest, TestCanReceiveRequest)
 
 TEST_F(MemberTest, TestCommitReceiveRequest) {
   std::string recipient = "localhost";
-  std::future<bool> resultsSoon = member->commitReceiveRequest(12345, recipient, 123);
+  std::future<bool> resultsSoon = member->commitReceiveRequest(1, 12345, recipient, 123);
   std::future_status status = resultsSoon.wait_for(std::chrono::seconds(2));
   ASSERT_EQ(std::future_status::ready, status);
   bool result = resultsSoon.get();
@@ -70,7 +70,7 @@ TEST_F(MemberTest, TestCommitReceiveRequest) {
 TEST_F(MemberTest, TestCommitAsStableRequest)
 {
   std::string recipient = "localhost";
-  std::future<bool> resultsSoon = member->commitAsStableRequest(12345, recipient, 123);
+  std::future<bool> resultsSoon = member->commitAsStableRequest(1, 12345, recipient, 123);
   std::future_status status = resultsSoon.wait_for(std::chrono::seconds(2));
   ASSERT_EQ(std::future_status::ready, status);
   bool result = resultsSoon.get();
@@ -83,16 +83,16 @@ GetResult MemberTest::handleGetRequest(transaction_t tid, device_t deviceId, tim
   return GetResult(); // Tested in test_client.h
 }
 
-PutResult MemberTest::handlePutRequest(transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry) {
+PutResult MemberTest::handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data) {
   return PutResult(); // Tested in test_client.h
 }
 
-bool MemberTest::handleUpdatePartitionOwner(transaction_t tid, node_t newOwner, partition_t partition) {
+bool MemberTest::handleUpdatePartitionOwner(node_t sender, transaction_t tid, node_t newOwner, partition_t partition) {
   updateCalled = true;
   return true;
 }
 
-CanReceiveResult MemberTest::handleCanReceiveRequest(transaction_t tid, partition_t partition_id) {
+CanReceiveResult MemberTest::handleCanReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id) {
   canReceiveCalled = true;
   CanReceiveResult result= {};
   result.can_recv = true;
@@ -101,12 +101,12 @@ CanReceiveResult MemberTest::handleCanReceiveRequest(transaction_t tid, partitio
   return result;
 }
 
-bool MemberTest::handleCommitReceiveRequest(transaction_t tid, partition_t partition_id) {
+bool MemberTest::handleCommitReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id) {
   commitReceiveCalled = true;
   return true;
 }
 
-bool MemberTest::handleCommitAsStableRequest(transaction_t tid, partition_t partition_id) {
+bool MemberTest::handleCommitAsStableRequest(node_t sender, transaction_t tid, partition_t partition_id) {
   commitAsStableCalled = true;
   return true;
 }
