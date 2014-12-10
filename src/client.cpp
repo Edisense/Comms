@@ -91,6 +91,10 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     uint32_t blobSize;
     request >> sender >> tid >> deviceId >> timestamp >> expiry;
     request >> blobSize;
+
+    cout << sender << " [sender] " << tid << " [tid] " << deviceId << " [did] "  << timestamp << " [time] " 
+      << expiry << " [expire] " << blobSize << " [size]" << endl;
+
     unsigned char* rawPoint;
     rawPoint = (unsigned char *) request.raw_data(blobSize);
     blob point(rawPoint, rawPoint + blobSize);
