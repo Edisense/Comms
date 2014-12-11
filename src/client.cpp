@@ -78,7 +78,7 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
       response.add(data.data);
       response.add((uint32_t) data.expiration);
       response.add((uint32_t) data.timestamp);
-    }
+  }
     serverSocket->send(response);
   } else if (topic == "put") {
     wasRequestProcessed = true;
@@ -145,7 +145,7 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
       CallStatus status;
       node_t movedNode;
       int dataCount;
-      list<Data> *results;
+      list<Data> *results = new list<Data>;
 
       response >> tmpStatus;
       status = (CallStatus) tmpStatus;
