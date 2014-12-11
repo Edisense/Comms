@@ -75,8 +75,7 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     response.add(getResult.moved_to);
     response.add((uint32_t) getResult.values->size());
     for (Data data : *getResult.values) {
-      response.add((uint32_t)data.data.size());
-      response.add_raw(&data.data[0], data.data.size());
+      response.add(data.data);
       response.add((uint32_t) data.expiration);
       response.add((uint32_t) data.timestamp);
     }
@@ -88,14 +87,12 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     device_t deviceId;
     uint32_t timestamp;
     uint32_t expiry;
-    uint32_t blobSize;
-    request >> sender >> tid >> deviceId >> timestamp >> expiry;
-    request >> blobSize;
-    unsigned char* rawPoint;
-    rawPoint = (unsigned char *) request.raw_data(blobSize);
-    blob point(rawPoint, rawPoint + blobSize);
+    blob data;    
 
-    PutResult result = subscriber->handlePutRequest(sender, tid, deviceId, timestamp, expiry, point);
+    request >> sender >> tid >> deviceId >> timestamp >> expiry;
+    request >> data;
+
+    PutResult result = subscriber->handlePutRequest(sender, tid, deviceId, timestamp, expiry, data);
     response.add((uint8_t) result.status);
     response.add(result.moved_to);
     serverSocket->send(response);
@@ -107,8 +104,7 @@ list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid
   list<pair<string, PutResult>> respondents;
   zmqpp::message message;
   message << "put" << sender << tid << deviceId << (uint32_t) timestamp << (uint32_t) expiration;
-  message << (uint32_t) data.size();
-  message.add_raw(&data[0], data.size());
+  message << data;
   for(string node : recipients) {
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
@@ -156,18 +152,15 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
       response >> movedNode;
       response >> dataCount;
 
-      uint32_t pointSize;
+      string point;
       uint32_t timestamp;
       uint32_t expiry;
 
       for (int i = 0; i < dataCount; i++) {
-        response >> pointSize;
-        unsigned char* rawPoint;
-        rawPoint = (unsigned char *) message.raw_data(pointSize);
+        
+        response >> point;
         response >> timestamp;
         response >> expiry;
-
-        blob point(rawPoint, rawPoint + pointSize);
 
         Data data = {};
         data.data = point;
