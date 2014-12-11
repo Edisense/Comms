@@ -118,8 +118,6 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
   return wasRequestProcessed;
 }
 
-#define P(x) printf("%d\n", x);
-
 list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
   list<pair<string, PutResult>> respondents;
 

@@ -51,6 +51,11 @@ public:
    */
   std::future<bool> commitAsStableRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition_id);
 
+  /*!
+    send to recipent, which is a hostname
+  */
+  std::future<JoinResult> sendJoinRequest(node_t sender, transaction_t tid, std::string &recipient, std::string &new_member);
+
 protected:
 
   virtual bool dispositionRequest(std::string topic, zmqpp::message &message);
@@ -65,6 +70,8 @@ private:
 
   bool remoteCommitAsStableRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition);
 
+  JoinResult remoteJoinRequest(node_t sender, transaction_t tid, std::string &recipient, std::string &new_node);
+
   void handleUpdatePartitionOwner(zmqpp::message &message);
 
   void handleCanReceiveRequest(zmqpp::message &message);
@@ -73,7 +80,7 @@ private:
 
   void handleCommitAsStableRequest(zmqpp::message &message);
 
-
+  void handleJoinRequest(zmqpp::message &message);
 };
 
 class edisense_comms::MemberServer : public ClientServer {
@@ -88,6 +95,9 @@ public:
       = 0;
 
   virtual bool handleCommitAsStableRequest(node_t sender, transaction_t tid, partition_t partition_id)
+      = 0;
+
+  virtual JoinResult handleJoinRequest(node_t sender, transaction_t tid, std::string &new_node)
       = 0;
 };
 

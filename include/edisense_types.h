@@ -68,12 +68,20 @@ typedef struct CanReceiveResult
 	uint64_t free;
 } CanReceiveResult;
 
-typedef struct GetPartitionTableResult
+// typedef struct GetPartitionTableResult
+// {
+// 	bool success;
+// 	int num_partitions;
+// 	int num_replicas;
+// 	node_t *partition_table; // DO NOT WRITE TO OR FREE THIS!!!
+// } GetPartitionTableResult;
+
+typedef struct JoinResult
 {
 	bool success;
-	int num_partitions;
 	int num_replicas;
-	node_t *partition_table; // DO NOT WRITE TO OR FREE THIS!!!
-} GetPartitionTableResult;
+	int num_partitions;
+	std::list<partition_t> partitions;
+} JoinResult;
 
 #endif /* EDISENSE_TYPES_H */

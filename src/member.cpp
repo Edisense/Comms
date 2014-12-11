@@ -8,7 +8,7 @@
 #define MSG_CAN_RECEIVE_REQUEST "canReceiveRequest"
 #define MSG_COMMIT_RECEIVE_REQUEST "commitReceiveRequest"
 #define MSG_COMMIT_AS_STABLE_REQUEST "commitAsStableRequest"
-
+#define MSG_JOIN_REQUEST "joinRequest"
 
 using namespace edisense_comms;
 using namespace std;
@@ -35,6 +35,10 @@ std::future<bool> Member::commitReceiveRequest(node_t sender, transaction_t tid,
 
 std::future<bool> Member::commitAsStableRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition_id) {
   return async(launch::async, &Member::remoteCommitAsStableRequest, this, sender,  tid, ref(recipient), partition_id);
+}
+
+std::future<JoinResult> Member::sendJoinRequest(node_t sender, transaction_t tid, string &recipient, string &new_owner) {
+  return async(launch::async, &Member::remoteJoinRequest, this, sender,  tid, ref(recipient), ref(new_owner));
 }
 
 list<string> Member::remoteUpdatePartitionOwner(node_t sender, transaction_t tid, list<string> recipients, node_t newOwner, partition_t partition) {
@@ -205,6 +209,56 @@ bool Member::remoteCommitAsStableRequest(node_t sender, transaction_t tid, strin
   return allGood;
 }
 
+#define P(x) printf("%d\n", x);
+JoinResult Member::remoteJoinRequest(node_t sender, transaction_t tid, string &recipient, string &new_node)
+{
+  zmqpp::endpoint_t endpoint = buildEndpoint(recipient, SERVER_SOCKET_PORT);
+  zmqpp::message message;
+  message << MSG_JOIN_REQUEST << sender << tid << new_node;
+  zmqpp::message response;
+  
+  zmqpp::socket *socket = buildClientSocket();
+  P(1)
+  JoinResult result;
+  try
+  {
+    socket->connect(endpoint);
+    socket->send(message);
+
+    socket->receive(response);
+    P(2)
+    int count;
+    response >> result.success;
+    response >> result.num_partitions;
+    response >> result.num_replicas;
+    P(4)
+    response >> count;
+    P(3)
+    for (int i = 0; i < count; i++) {
+      partition_t pid;
+      response >> pid;
+      result.partitions.push_back(pid);
+    }
+    socket->disconnect(endpoint);
+  }
+  catch (zmqpp::exception e)
+  {
+    result.success = false;
+    cerr << e.what() << endl;
+  }
+  
+  try 
+  {
+    socket->close();
+  }
+  catch (zmqpp::exception e)
+  {
+    cerr << e.what() << endl;
+  }
+
+  return result;
+}
+
 bool Member::dispositionRequest(string topic, zmqpp::message &message) {
   bool wasRequestProcessed = Client::dispositionRequest(topic, message);
   if (!wasRequestProcessed) {
@@ -212,6 +266,7 @@ bool Member::dispositionRequest(string topic, zmqpp::message &message) {
     else if ((wasRequestProcessed = (topic == MSG_CAN_RECEIVE_REQUEST     ))) handleCanReceiveRequest(message);
     else if ((wasRequestProcessed = (topic == MSG_COMMIT_RECEIVE_REQUEST  ))) handleCommitReceiveRequest(message);
     else if ((wasRequestProcessed = (topic == MSG_COMMIT_AS_STABLE_REQUEST))) handleCommitAsStableRequest(message);
+    else if ((wasRequestProcessed = (topic == MSG_JOIN_REQUEST            ))) handleJoinRequest(message);
   }
   return wasRequestProcessed;
 }
@@ -262,5 +317,22 @@ void Member::handleCommitAsStableRequest(zmqpp::message &message) {
 
   bool allGood = memberHandler->handleCommitAsStableRequest(sender, tid, partition);
   response << allGood;
+  serverSocket->send(response);
+}
+
+void Member::handleJoinRequest(zmqpp::message &message)
+{
+  zmqpp::message response;
+  node_t sender;
+  transaction_t tid;
+  string sender_hostname;
+  message >> sender >> tid >> sender_hostname;
+
+  JoinResult result = memberHandler->handleJoinRequest(sender, tid, sender_hostname);
+  response << result.success << result.num_partitions << result.num_replicas;
+  int count = result.partitions.size();
+  response << count;
+  for (partition_t pid : result.partitions)
+    response << pid;
   serverSocket->send(response);
 }

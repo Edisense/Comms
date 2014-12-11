@@ -31,6 +31,8 @@ public:
   virtual bool handleCommitReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id);
 
   virtual bool handleCommitAsStableRequest(node_t sender, transaction_t tid, partition_t partition_id);
+
+  virtual JoinResult handleJoinRequest(node_t sender, transaction_t tid, std::string &new_member);
 };
 
 TEST_F(MemberTest, TestUpdatePartitionRequest)
@@ -115,6 +117,12 @@ bool MemberTest::handleCommitReceiveRequest(node_t sender, transaction_t tid, pa
 bool MemberTest::handleCommitAsStableRequest(node_t sender, transaction_t tid, partition_t partition_id) {
   commitAsStableCalled = true;
   return true;
+}
+
+JoinResult MemberTest::handleJoinRequest(node_t sender, transaction_t tid, std::string &new_member)
+{
+  JoinResult r;
+  return r; 
 }
 
 void MemberTest::SetUp() {
