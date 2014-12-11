@@ -92,6 +92,9 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     request >> sender >> tid >> deviceId >> timestamp >> expiry;
     request >> data;
 
+    cout << sender << " [sender] " << tid << " [tid] " << deviceId << " [did] "  << timestamp << " [time] "
+        << expiry << " [expire] " << data << endl;
+
     PutResult result = subscriber->handlePutRequest(sender, tid, deviceId, timestamp, expiry, data);
     response.add((uint8_t) result.status);
     response.add(result.moved_to);
