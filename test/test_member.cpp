@@ -22,6 +22,8 @@ public:
 
   virtual PutResult handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data);
 
+  virtual std::list<std::string> *handleLocateRequest(device_t deviceId);
+
   virtual bool handleUpdatePartitionOwner(node_t sender, transaction_t tid, node_t newOwner, partition_t partition);
 
   virtual CanReceiveResult handleCanReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id);
@@ -85,6 +87,10 @@ GetResult MemberTest::handleGetRequest(transaction_t tid, device_t deviceId, tim
 
 PutResult MemberTest::handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data) {
   return PutResult(); // Tested in test_client.h
+}
+
+std::list<std::string> *MemberTest::handleLocateRequest(device_t deviceId) {
+  return NULL; // Tested in test_client.h
 }
 
 bool MemberTest::handleUpdatePartitionOwner(node_t sender, transaction_t tid, node_t newOwner, partition_t partition) {

@@ -84,6 +84,8 @@ private:
 
   void startServer();
 
+  zmqpp::socket *buildClientSocket();
+
   std::list<std::pair<std::string, PutResult>> remotePut(node_t sender, transaction_t tid, std::list<std::string> &recipients,
       device_t deviceId, time_t timestamp, time_t expiration,
       blob data);
@@ -102,6 +104,9 @@ public:
       = 0;
 
   virtual PutResult handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob point)
+      = 0;
+
+  virtual std::list<std::string> *handleLocateRequest(device_t deviceId)
       = 0;
 };
 

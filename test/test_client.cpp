@@ -20,6 +20,8 @@ public:
   virtual GetResult handleGetRequest(transaction_t tid, device_t deviceId, time_t begin, time_t end);
 
   virtual PutResult handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data);
+
+  virtual std::list<std::string> *handleLocateRequest(device_t deviceId);
 };
 
 TEST_F(ClientTest, RunGetRequest) {
@@ -77,5 +79,9 @@ void ClientTest::TearDown() {
   Test::TearDown();
   client->stop();
   delete client;
+}
+
+std::list<std::string> *ClientTest::handleLocateRequest(device_t deviceId) {
+  return NULL;
 }
 

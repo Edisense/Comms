@@ -103,31 +103,80 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
   return wasRequestProcessed;
 }
 
+#define P(x) printf("%d\n", x);
+
 list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
   list<pair<string, PutResult>> respondents;
-  zmqpp::message message;
-  message << "put" << sender << tid << deviceId << (uint32_t) timestamp << (uint32_t) expiration;
-  message << data;
-  for(string node : recipients) {
+
+//  P(1)
+  vector<zmqpp::socket *> open_sockets;
+  vector<zmqpp::endpoint_t> open_endpoints;
+
+  for(string &node : recipients) 
+  {
+    zmqpp::message message;
+    message << "put" << sender << tid << deviceId << (uint32_t) timestamp << (uint32_t) expiration;
+    message << data;
+//    P(2)
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
-    zmqpp::message response;
-    clientSocket->connect(endpoint);
-    clientSocket->send(message);
-
-    // TODO I think this will actually block until we get a response from everyone - introduce a timeout
-    clientSocket->receive(response);
-    uint8_t tmpStatus;
-    node_t movedTo;
-    response >> tmpStatus >> movedTo;
-    PutResult result = {};
-    result.status = (CallStatus) tmpStatus;
-    result.moved_to = movedTo;
-
-    pair<string, PutResult> respondent(node, result);
-
-    respondents.push_back(respondent);
-    clientSocket->disconnect(endpoint);
+    printf("%s\n", endpoint.c_str());
+//    P(22)
+    zmqpp::socket *socket = buildClientSocket();
+    open_sockets.push_back(socket);
+    open_endpoints.push_back(endpoint);
+    
+    try
+    {
+      socket->connect(endpoint);
+      socket->send(message);
+    }
+    catch(zmqpp::exception e)
+    {
+      cerr << e.what() << endl;
+    }
+//    P(3)
   }
+//    P(4)
+
+  int i = 0;
+  for(string &node : recipients) 
+  {
+    zmqpp::socket *socket = open_sockets[i];
+    zmqpp::message response;
+
+    try 
+    {
+      socket->receive(response);
+//    P(5)
+      uint8_t tmpStatus;
+      node_t movedTo;
+      response >> tmpStatus >> movedTo;
+      PutResult result = {};
+      result.status = (CallStatus) tmpStatus;
+      result.moved_to = movedTo;
+
+      pair<string, PutResult> respondent(node, result);
+      respondents.push_back(respondent);
+      socket->disconnect(open_endpoints[i]);
+    }
+    catch (zmqpp::exception e)
+    {
+      cerr << e.what() << endl;
+    }
+
+    try
+    {
+      socket->close();
+    }
+    catch (zmqpp::exception e)
+    {
+      cerr << e.what() << endl;
+    }
+
+//    P(7)
+    i++;
+  }
+
   return respondents;
 }
 
@@ -189,4 +238,12 @@ std::string Client::buildEndpoint(std::string target, int port) {
   stringstream buf;
   buf << "tcp://" << target << ':' << port;
   return buf.str();
+}
+
+zmqpp::socket *Client::buildClientSocket()
+{
+  zmqpp::socket *socket = new zmqpp::socket(*context, zmqpp::socket_type::request);
+  socket->set(zmqpp::socket_option::receive_timeout, 1000);
+  socket->set(zmqpp::socket_option::send_timeout, 1000);
+  return socket;
 }
