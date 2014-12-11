@@ -38,26 +38,63 @@ std::future<bool> Member::commitAsStableRequest(node_t sender, transaction_t tid
 }
 
 list<string> Member::remoteUpdatePartitionOwner(node_t sender, transaction_t tid, list<string> recipients, node_t newOwner, partition_t partition) {
-  list<string> respondents;
-  zmqpp::message message;
-  message << MSG_UPDATE_PARTITION_OWNER << sender << tid << newOwner << partition;
+  list<string> non_respondents;
 
-  for(string node : recipients) {
+  vector<zmqpp::socket *> open_sockets;
+  vector<zmqpp::endpoint_t> open_endpoints;
+
+  for(string &node : recipients) {
+    zmqpp::message message;
+    message << MSG_UPDATE_PARTITION_OWNER << sender << tid << newOwner << partition;
+
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
-    zmqpp::message response;
-    clientSocket->connect(endpoint);
-    clientSocket->send(message);
 
-    // TODO I think this will actually block until we get a response from everyone - introduce a timeout
-    clientSocket->receive(response);
-    bool allGood;
-    response >> allGood;
-    if (allGood) {
-      respondents.push_back(node);
+    zmqpp::socket *socket = buildClientSocket();
+    open_sockets.push_back(socket);
+    open_endpoints.push_back(endpoint);
+
+    try 
+    {
+      socket->connect(endpoint);
+      socket->send(message);
     }
-    clientSocket->disconnect(endpoint);
+    catch(zmqpp::exception e)
+    {
+      cerr << e.what() << endl;
+    }
   }
-  return respondents;
+
+  int i = 0;
+  for(string &node : recipients) {
+    zmqpp::message response;  
+    zmqpp::socket *socket = open_sockets[i];
+    bool allGood = false;
+    try
+    {
+      socket->receive(response);
+      response >> allGood;
+      socket->disconnect(open_endpoints[i]);
+    }
+    catch(zmqpp::exception e)
+    {
+      cerr << e.what() << endl;
+    }
+    if (!allGood) {
+        non_respondents.push_back(node);
+    }
+
+    try 
+    {
+      socket->close();
+      delete socket;
+    } 
+    catch (zmqpp::exception e)
+    {
+      cerr << e.what() << endl;
+    }
+    i++;
+  }
+  return non_respondents;
 }
 
 CanReceiveResult Member::remoteCanReceiveRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition) {
@@ -65,19 +102,33 @@ CanReceiveResult Member::remoteCanReceiveRequest(node_t sender, transaction_t ti
   zmqpp::message message;
   message << MSG_CAN_RECEIVE_REQUEST << sender << tid << partition;
   zmqpp::message response;
-  clientSocket->connect(endpoint);
-  clientSocket->send(message);
+  CanReceiveResult result;
+  result.can_recv = false;
 
-  clientSocket->receive(response);
-  clientSocket->disconnect(endpoint);
+  zmqpp::socket *socket = buildClientSocket();
 
-  bool canReceive;
-  uint64_t free;
-  float util;
+  try
+  {
+    socket->connect(endpoint);
+    socket->send(message);
 
-  CanReceiveResult result= {};
+    socket->receive(response);
+    response >> result.can_recv >> result.free >> result.util;
+    socket->disconnect(endpoint);
+  }
+  catch (zmqpp::exception e)
+  {
+    cerr << e.what() << endl;
+  }
 
-  response >> result.can_recv >> result.free >> result.util;
+  try 
+  {
+    socket->close();
+  }
+  catch (zmqpp::exception e)
+  {
+    cerr << e.what() << endl;
+  }
 
   return result;
 }
@@ -87,14 +138,34 @@ bool Member::remoteCommitReceiveRequest(node_t sender, transaction_t tid, string
   zmqpp::message message;
   message << MSG_COMMIT_RECEIVE_REQUEST << sender << tid << partition;
   zmqpp::message response;
-  clientSocket->connect(endpoint);
-  clientSocket->send(message);
 
-  clientSocket->receive(response);
-  clientSocket->disconnect(endpoint);
+  zmqpp::socket *socket = buildClientSocket();
 
-  bool allGood;
-  response >> allGood;
+  bool allGood = false;
+
+  try
+  {
+    socket->connect(endpoint);
+    socket->send(message);
+
+    socket->receive(response);
+    response >> allGood;
+    socket->disconnect(endpoint);
+  }
+  catch (zmqpp::exception e)
+  {
+    cerr << e.what() << endl;
+  }
+  
+  try 
+  {
+    socket->close();
+  }
+  catch (zmqpp::exception e)
+  {
+    cerr << e.what() << endl;
+  }
+
   return allGood;
 }
 
@@ -103,14 +174,34 @@ bool Member::remoteCommitAsStableRequest(node_t sender, transaction_t tid, strin
   zmqpp::message message;
   message << MSG_COMMIT_AS_STABLE_REQUEST << sender << tid << partition;
   zmqpp::message response;
-  clientSocket->connect(endpoint);
-  clientSocket->send(message);
+  
+  zmqpp::socket *socket = buildClientSocket();
 
-  clientSocket->receive(response);
-  clientSocket->disconnect(endpoint);
+  bool allGood = false;
 
-  bool allGood;
-  response >> allGood;
+  try
+  {
+    socket->connect(endpoint);
+    socket->send(message);
+
+    socket->receive(response);
+    response >> allGood;
+    socket->disconnect(endpoint);
+  }
+  catch (zmqpp::exception e)
+  {
+    cerr << e.what() << endl;
+  }
+  
+  try 
+  {
+    socket->close();
+  }
+  catch (zmqpp::exception e)
+  {
+    cerr << e.what() << endl;
+  }
+
   return allGood;
 }
 

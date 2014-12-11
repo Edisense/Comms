@@ -58,6 +58,11 @@ future<list<GetResult>> Client::get(transaction_t tid, list<string> &recipients,
   return async(launch::async, &Client::remoteGet, this, tid, std::ref(recipients), deviceId, begin, end);
 }
 
+future<list<string>> Client::locate(device_t deviceId, string &recipient)
+{
+  return async(launch::async, &Client::remoteLocate, this, deviceId, recipient);
+}
+
 bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO extract to functions
   bool wasRequestProcessed = false;
   zmqpp::message response;
@@ -78,8 +83,9 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
       response.add(data.data);
       response.add((uint32_t) data.expiration);
       response.add((uint32_t) data.timestamp);
-  }
+    }
     serverSocket->send(response);
+    delete getResult.values;
   } else if (topic == "put") {
     wasRequestProcessed = true;
     node_t sender;
@@ -99,6 +105,15 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     response.add((uint8_t) result.status);
     response.add(result.moved_to);
     serverSocket->send(response);
+  } else if (topic == "locate") {
+    wasRequestProcessed = true;
+    device_t deviceId;
+    request >> deviceId;
+    list<string> *result = subscriber->handleLocateRequest(deviceId);
+    response.add((uint32_t) result->size());
+    for (string &s : *result)
+      response.add(s);
+    delete result;
   }
   return wasRequestProcessed;
 }
@@ -108,7 +123,6 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
 list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid, list<string> &recipients, device_t deviceId, time_t timestamp, time_t expiration, blob data) {
   list<pair<string, PutResult>> respondents;
 
-//  P(1)
   vector<zmqpp::socket *> open_sockets;
   vector<zmqpp::endpoint_t> open_endpoints;
 
@@ -117,10 +131,10 @@ list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid
     zmqpp::message message;
     message << "put" << sender << tid << deviceId << (uint32_t) timestamp << (uint32_t) expiration;
     message << data;
-//    P(2)
+
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     printf("%s\n", endpoint.c_str());
-//    P(22)
+
     zmqpp::socket *socket = buildClientSocket();
     open_sockets.push_back(socket);
     open_endpoints.push_back(endpoint);
@@ -134,9 +148,7 @@ list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid
     {
       cerr << e.what() << endl;
     }
-//    P(3)
   }
-//    P(4)
 
   int i = 0;
   for(string &node : recipients) 
@@ -147,7 +159,6 @@ list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid
     try 
     {
       socket->receive(response);
-//    P(5)
       uint8_t tmpStatus;
       node_t movedTo;
       response >> tmpStatus >> movedTo;
@@ -173,7 +184,6 @@ list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid
       cerr << e.what() << endl;
     }
 
-//    P(7)
     i++;
   }
 
@@ -232,6 +242,49 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
     if (!combinedResults.empty()) break; // Exit once we've gotten data from any node
   }
   return combinedResults;
+}
+
+list<string> Client::remoteLocate(device_t deviceId, string hostname)
+{
+  zmqpp::message message;
+  message << "locate" << deviceId;
+
+  zmqpp::socket *socket = buildClientSocket();
+  zmqpp::endpoint_t endpoint = buildEndpoint(hostname, SERVER_SOCKET_PORT);
+
+  list<string> result;
+  try
+  {
+    socket->connect(endpoint);
+    socket->send(message);
+
+    zmqpp::message response;
+    socket->receive(response);
+    int count;
+    response >> count;
+
+    for (int i = 0; i < count; i++) {
+      string host;
+      response >> host;
+      result.push_back(host);
+    }
+    socket->disconnect(endpoint);
+  }
+  catch (zmqpp::exception e)
+  {
+    cerr << e.what() << endl;
+  }
+
+  try 
+  {
+    socket->close();
+  }
+  catch (zmqpp::exception e)
+  {
+    cerr << e.what() << endl;
+  }
+
+  return result;
 }
 
 std::string Client::buildEndpoint(std::string target, int port) {

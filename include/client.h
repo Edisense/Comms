@@ -69,12 +69,16 @@ public:
   std::future<std::list<GetResult>> get(transaction_t tid, std::list<std::string> &recipients,
       device_t deviceId, time_t begin, time_t end);
 
+  std::future<std::list<std::string>> locate(device_t deviceId, std::string &recipient);
+
 protected:
   zmqpp::context *context;
   zmqpp::socket *clientSocket;
   zmqpp::socket *serverSocket;
 
   static std::string buildEndpoint(std::string target, int port);
+
+  zmqpp::socket *buildClientSocket();
 
   virtual bool dispositionRequest(std::string topic, zmqpp::message &message);
 
@@ -84,7 +88,7 @@ private:
 
   void startServer();
 
-  zmqpp::socket *buildClientSocket();
+  std::list<std::string> remoteLocate(device_t deviceId, std::string hostname);
 
   std::list<std::pair<std::string, PutResult>> remotePut(node_t sender, transaction_t tid, std::list<std::string> &recipients,
       device_t deviceId, time_t timestamp, time_t expiration,
