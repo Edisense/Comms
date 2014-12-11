@@ -5,6 +5,7 @@
 #include <ctime>
 #include <list>
 #include <vector>
+#include <string>
 
 // 16-bit node id
 typedef uint16_t node_t;
@@ -19,7 +20,7 @@ typedef uint16_t partition_t;
 typedef uint64_t transaction_t;
 
 // Binary blob
-typedef typename std::vector<unsigned char> blob;
+typedef std::string blob;
 
 const int kMaxDataLen = 20;
 
@@ -28,7 +29,6 @@ typedef struct Data
 	time_t timestamp;
 	time_t expiration;
 	blob data;
-	size_t datalen;
 } Data;
 
 // for message passing
