@@ -44,8 +44,8 @@ TEST_F(MemberTest, TestUpdatePartitionRequest)
   ASSERT_EQ(std::future_status::ready, status);
   std::list<std::string> results = resultsSoon.get();
 
-  EXPECT_EQ(1, results.size());
   EXPECT_TRUE(updateCalled);
+  EXPECT_EQ(0, results.size());
 }
 
 TEST_F(MemberTest, TestCanReceiveRequest)
@@ -79,8 +79,8 @@ TEST_F(MemberTest, TestCommitAsStableRequest)
   ASSERT_EQ(std::future_status::ready, status);
   bool result = resultsSoon.get();
 
-  EXPECT_TRUE(result);
   EXPECT_TRUE(commitAsStableCalled);
+  EXPECT_TRUE(result);
 }
 
 GetResult MemberTest::handleGetRequest(transaction_t tid, device_t deviceId, time_t begin, time_t end) {
