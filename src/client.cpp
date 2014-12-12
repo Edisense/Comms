@@ -34,6 +34,7 @@ void Client::stop() {
   serverSocket->disconnect(buildEndpoint("*", SERVER_SOCKET_PORT));
 }
 
+#define P(x) printf("%d\n", x);
 void Client::startServer() {
 
   zmqpp::endpoint_t acceptAll = buildEndpoint("*", SERVER_SOCKET_PORT);
@@ -114,6 +115,7 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     for (string &s : *result)
       response.add(s);
     delete result;
+    serverSocket->send(response);
   }
   return wasRequestProcessed;
 }
