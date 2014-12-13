@@ -17,8 +17,8 @@ Client::Client() {
   serverSocket = new zmqpp::socket(*context, zmqpp::socket_type::reply);
   clientSocket = new zmqpp::socket(*context, zmqpp::socket_type::request);
 
-  clientSocket->set(zmqpp::socket_option::receive_timeout, 1000);
-  clientSocket->set(zmqpp::socket_option::send_timeout, 1000);
+  clientSocket->set(zmqpp::socket_option::receive_timeout, 5000);
+  clientSocket->set(zmqpp::socket_option::send_timeout, 5000);
   serverSocket->set(zmqpp::socket_option::send_timeout, 1000);
 }
 
@@ -100,7 +100,7 @@ bool Client::dispositionRequest(string topic, zmqpp::message &request) { // TODO
     request >> data;
 
     cout << sender << " [sender] " << tid << " [tid] " << deviceId << " [did] "  << timestamp << " [time] "
-        << expiry << " [expire] " << data << endl;
+        << expiry << " [expire] " << endl;
 
     PutResult result = subscriber->handlePutRequest(sender, tid, deviceId, timestamp, expiry, data);
     response.add((uint8_t) result.status);
@@ -178,6 +178,7 @@ list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid
     try
     {
       socket->close();
+      delete socket;
     }
     catch (zmqpp::exception e)
     {
@@ -190,18 +191,20 @@ list<pair<string, PutResult>> Client::remotePut(node_t sender, transaction_t tid
   return respondents;
 }
 
-std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string> &recipients, device_t deviceId, time_t begin, time_t end) {
-  zmqpp::message message;
-  message << "get" << tid << deviceId << (uint32_t) begin << (uint32_t) end;
+std::list<GetResult> Client::remoteGet(transaction_t tid, 
+  std::list<std::string> &recipients, device_t deviceId, time_t begin, time_t end) {
   list<GetResult> combinedResults;
 
-  for(string node : recipients) {
+  zmqpp::socket *socket = buildClientSocket();
+  for(string &node : recipients) {
+    zmqpp::message message;
+    message << "get" << tid << deviceId << (uint32_t) begin << (uint32_t) end;
     zmqpp::endpoint_t endpoint = buildEndpoint(node, SERVER_SOCKET_PORT);
     zmqpp::message response;
-    clientSocket->connect(endpoint);
-    clientSocket->send(message);
+    socket->connect(endpoint);
+    socket->send(message);
 
-    clientSocket->receive(response);
+    socket->receive(response);
     if (response.remaining() > 0) {
       uint8_t tmpStatus;
       CallStatus status;
@@ -238,9 +241,11 @@ std::list<GetResult> Client::remoteGet(transaction_t tid, std::list<std::string>
       combinedResults.push_back(result);
     }
 
-    clientSocket->disconnect(endpoint);
+    socket->disconnect(endpoint);
     if (!combinedResults.empty()) break; // Exit once we've gotten data from any node
   }
+  socket->close();
+  delete socket;
   return combinedResults;
 }
 
@@ -278,6 +283,7 @@ list<string> Client::remoteLocate(device_t deviceId, string hostname)
   try 
   {
     socket->close();
+    delete socket;
   }
   catch (zmqpp::exception e)
   {

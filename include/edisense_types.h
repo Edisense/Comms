@@ -42,6 +42,13 @@ enum CallStatus
 	DB_ERROR = 4
 };
 
+enum CallStatusBool
+{
+	RET_TRUE,
+	RET_FALSE,
+	RET_COMMS_FAILURE
+};
+
 typedef struct MessageId
 {
 	node_t node_id;
@@ -67,14 +74,6 @@ typedef struct CanReceiveResult
 	float util;
 	uint64_t free;
 } CanReceiveResult;
-
-// typedef struct GetPartitionTableResult
-// {
-// 	bool success;
-// 	int num_partitions;
-// 	int num_replicas;
-// 	node_t *partition_table; // DO NOT WRITE TO OR FREE THIS!!!
-// } GetPartitionTableResult;
 
 typedef struct JoinResult
 {

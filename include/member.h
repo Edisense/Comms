@@ -44,7 +44,7 @@ public:
   /*!
     send to recipent, which is a hostname
    */
-  std::future<bool> commitReceiveRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition_id);
+  std::future<CallStatusBool> commitReceiveRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition_id);
 
   /*!
     send to recipent, which is a hostname
@@ -66,7 +66,7 @@ private:
 
   CanReceiveResult remoteCanReceiveRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition);
 
-  bool remoteCommitReceiveRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition);
+  CallStatusBool remoteCommitReceiveRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition);
 
   bool remoteCommitAsStableRequest(node_t sender, transaction_t tid, std::string &recipient, partition_t partition);
 

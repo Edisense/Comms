@@ -29,7 +29,7 @@ std::future<CanReceiveResult> Member::canReceiveRequest(node_t sender, transacti
   return async(launch::async, &Member::remoteCanReceiveRequest, this, sender, tid, ref(recipient), partition_id);
 }
 
-std::future<bool> Member::commitReceiveRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition_id) {
+std::future<CallStatusBool> Member::commitReceiveRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition_id) {
   return async(launch::async, &Member::remoteCommitReceiveRequest, this, sender,  tid, ref(recipient), partition_id);
 }
 
@@ -98,6 +98,7 @@ list<string> Member::remoteUpdatePartitionOwner(node_t sender, transaction_t tid
     }
     i++;
   }
+
   return non_respondents;
 }
 
@@ -128,6 +129,7 @@ CanReceiveResult Member::remoteCanReceiveRequest(node_t sender, transaction_t ti
   try 
   {
     socket->close();
+    delete socket;
   }
   catch (zmqpp::exception e)
   {
@@ -137,7 +139,7 @@ CanReceiveResult Member::remoteCanReceiveRequest(node_t sender, transaction_t ti
   return result;
 }
 
-bool Member::remoteCommitReceiveRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition) {
+CallStatusBool Member::remoteCommitReceiveRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition) {
   zmqpp::endpoint_t endpoint = buildEndpoint(recipient, SERVER_SOCKET_PORT);
   zmqpp::message message;
   message << MSG_COMMIT_RECEIVE_REQUEST << sender << tid << partition;
@@ -146,7 +148,7 @@ bool Member::remoteCommitReceiveRequest(node_t sender, transaction_t tid, string
   zmqpp::socket *socket = buildClientSocket();
 
   bool allGood = false;
-
+  bool commsFailure = false;
   try
   {
     socket->connect(endpoint);
@@ -158,19 +160,24 @@ bool Member::remoteCommitReceiveRequest(node_t sender, transaction_t tid, string
   }
   catch (zmqpp::exception e)
   {
+    commsFailure = true;
     cerr << e.what() << endl;
   }
   
   try 
   {
     socket->close();
+    delete socket;
   }
   catch (zmqpp::exception e)
   {
     cerr << e.what() << endl;
   }
 
-  return allGood;
+  if (commsFailure)
+    return RET_COMMS_FAILURE;
+
+  return allGood ? RET_TRUE : RET_FALSE;
 }
 
 bool Member::remoteCommitAsStableRequest(node_t sender, transaction_t tid, string &recipient, partition_t partition) {
@@ -209,7 +216,6 @@ bool Member::remoteCommitAsStableRequest(node_t sender, transaction_t tid, strin
   return allGood;
 }
 
-#define P(x) printf("%d\n", x);
 JoinResult Member::remoteJoinRequest(node_t sender, transaction_t tid, string &recipient, string &new_node)
 {
   zmqpp::endpoint_t endpoint = buildEndpoint(recipient, SERVER_SOCKET_PORT);
@@ -218,7 +224,6 @@ JoinResult Member::remoteJoinRequest(node_t sender, transaction_t tid, string &r
   zmqpp::message response;
   
   zmqpp::socket *socket = buildClientSocket();
-  P(1)
   JoinResult result;
   try
   {
@@ -226,14 +231,11 @@ JoinResult Member::remoteJoinRequest(node_t sender, transaction_t tid, string &r
     socket->send(message);
 
     socket->receive(response);
-    P(2)
     int count;
     response >> result.success;
     response >> result.num_partitions;
     response >> result.num_replicas;
-    P(4)
     response >> count;
-    P(3)
     for (int i = 0; i < count; i++) {
       partition_t pid;
       response >> pid;
@@ -250,12 +252,12 @@ JoinResult Member::remoteJoinRequest(node_t sender, transaction_t tid, string &r
   try 
   {
     socket->close();
+    delete socket;
   }
   catch (zmqpp::exception e)
   {
     cerr << e.what() << endl;
   }
-
   return result;
 }
 

@@ -62,10 +62,10 @@ TEST_F(MemberTest, TestCanReceiveRequest)
 
 TEST_F(MemberTest, TestCommitReceiveRequest) {
   std::string recipient = "localhost";
-  std::future<bool> resultsSoon = member->commitReceiveRequest(1, 12345, recipient, 123);
+  std::future<CallStatusBool> resultsSoon = member->commitReceiveRequest(1, 12345, recipient, 123);
   std::future_status status = resultsSoon.wait_for(std::chrono::seconds(2));
   ASSERT_EQ(std::future_status::ready, status);
-  bool result = resultsSoon.get();
+  bool result = resultsSoon.get() == RET_TRUE;
 
   EXPECT_TRUE(result);
   EXPECT_TRUE(commitReceiveCalled);
